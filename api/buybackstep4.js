@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
   const ACCESS_TOKEN = "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";
 
   try {
-    const response = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2024-04/products.json?title=${encodeURIComponent(cardName)}`, {
+    const shopifyRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': ACCESS_TOKEN,
@@ -23,7 +23,17 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    const data = await response.json();
+    const text = await shopifyRes.text();  // Try to read as plain text first for better debugging
+
+    // Try to parse it as JSON
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      console.error("Failed to parse JSON from Shopify:", text);
+      return res.status(500).json({ error: "Invalid JSON response from Shopify", raw: text });
+    }
+
     if (!data.products || data.products.length === 0) {
       return res.status(404).json({ error: 'Card not found in Shopify inventory' });
     }
@@ -36,11 +46,11 @@ module.exports = async function handler(req, res) {
       sku: variant.sku,
       price: parseFloat(variant.price),
       inventory: variant.inventory_quantity,
-      condition: "NM", // default condition for now
-      tradeInValue: (parseFloat(variant.price) * 0.30).toFixed(2) // 30% buyback rate
+      condition: "NM",
+      tradeInValue: (parseFloat(variant.price) * 0.30).toFixed(2)
     });
   } catch (err) {
     console.error('Shopify API Error:', err);
-    return res.status(500).json({ error: 'Failed to connect to Shopify API' });
+    return res.status(500).json({ error: 'Failed to connect to Shopify API', details: err.message });
   }
 }
