@@ -26,6 +26,7 @@
     <div id="card-container">
       <div class="card-row">
         <input type="text" name="cardName" placeholder="Card Name" style="margin-right: 10px;">
+<input type="number" name="cardQty" placeholder="Qty" min="1" value="1" style="width: 60px; margin-left: 10px;">
         <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" style="width: 60px;"> placeholder="Card Name" required />
         <select name="condition">
           <option value="NM">NM</option>
@@ -47,78 +48,56 @@
 
   
 
-<script>
-document.getElementById('submit-trade')?.addEventListener('click', function() {
-  const input = document.querySelector('input[name="cardName"]');
-  const qtyInput = document.querySelector('input[name="cardQty"]');
-  const cardName = input ? input.value : "Test Card";
-  const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
-
-  fetch('/api/buybackstep4', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cardName: cardName })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const totalValue = (data.tradeInValue * quantity).toFixed(2);
-    const resultDiv = document.getElementById("trade-result");
-    resultDiv.innerHTML = `
-      <div style="padding: 10px; border: 1px solid #ccc; background: #f9f9f9;">
-        <strong>Card:</strong> ${data.name}<br>
-        <strong>Condition:</strong> ${data.condition}<br>
-        <strong>Quantity:</strong> ${quantity}<br>
-        <strong>Estimated Buyback Value:</strong> <span style="color: green;">$${data.tradeInValue.toFixed(2)}</span><br>
-        <strong>Total Offer:</strong> <span style="color: darkgreen; font-weight: bold;">$${totalValue}</span>
-      </div>
-    `;
-  })
-  .catch(err => {
-    console.error("API error:", err);
-    document.getElementById("trade-result").innerHTML = "<span style='color:red;'>Error contacting API. See console for details.</span>";
-  });
-});
-</script>
 
 
 
 
 
-<script>
-document.getElementById('submit-trade')?.addEventListener('click', function() {
-  const input = document.querySelector('input[name="cardName"]');
-  const qtyInput = document.querySelector('input[name="cardQty"]');
-  const cardName = input ? input.value : "Test Card";
-  const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
 
-  fetch('/api/buybackstep4', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cardName: cardName })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const totalValue = (data.tradeInValue * quantity).toFixed(2);
-    const resultDiv = document.getElementById("trade-result");
-    resultDiv.innerHTML = `
-      <div style="padding: 10px; border: 1px solid #ccc; background: #f9f9f9;">
-        <strong>Card:</strong> ${data.name}<br>
-        <strong>Condition:</strong> ${data.condition}<br>
-        <strong>Quantity:</strong> ${quantity}<br>
-        <strong>Estimated Buyback Value:</strong> <span style="color: green;">$${data.tradeInValue.toFixed(2)}</span><br>
-        <strong>Total Offer:</strong> <span style="color: darkgreen; font-weight: bold;">$${totalValue}</span>
-      </div>
-    `;
-  })
-  .catch(err => {
-    console.error("API error:", err);
-    document.getElementById("trade-result").innerHTML = "<span style='color:red;'>Error contacting API. See console for details.</span>";
-  });
-});
-</script>
+
 
 
 
 <div id="trade-result" style="margin-top: 20px; font-size: 16px;"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const submitBtn = document.getElementById('submit-trade') || document.querySelector('button[type="submit"]');
+  if (!submitBtn) return;
+
+  submitBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+
+    const nameInput = document.querySelector('input[name="cardName"]');
+    const qtyInput = document.querySelector('input[name="cardQty"]');
+    const cardName = nameInput?.value || "Unknown Card";
+    const quantity = parseInt(qtyInput?.value) || 1;
+
+    fetch('/api/buybackstep4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardName: cardName })
+    })
+    .then(res => res.json())
+    .then(data => {
+      const totalValue = (data.tradeInValue * quantity).toFixed(2);
+      document.getElementById("trade-result").innerHTML = `
+        <div style="padding: 10px; border: 1px solid #ccc; background: #f9f9f9;">
+          <strong>Card:</strong> ${data.name}<br>
+          <strong>Condition:</strong> ${data.condition}<br>
+          <strong>Quantity:</strong> ${quantity}<br>
+          <strong>Estimated Buyback Value:</strong> <span style="color: green;">$${data.tradeInValue.toFixed(2)}</span><br>
+          <strong>Total Offer:</strong> <span style="color: darkgreen; font-weight: bold;">$${totalValue}</span>
+        </div>
+      `;
+    })
+    .catch(err => {
+      console.error("API error:", err);
+      document.getElementById("trade-result").innerHTML = "<span style='color:red;'>Error contacting API.</span>";
+    });
+  });
+});
+</script>
+
 </body>
 </html>
