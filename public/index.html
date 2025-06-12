@@ -58,7 +58,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
   const tradeLog = document.getElementById('log-entries');
   const statusBar = document.getElementById('status-bar');
+  const tradeForm = document.getElementById('trade-form');
 
+  // Add card row logic (from previous version)
   document.getElementById('add-card').addEventListener('click', function () {
     const row = document.createElement('div');
     row.className = 'card-row';
@@ -125,6 +127,62 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   });
+
+  // ✅ Trade form submission
+  tradeForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const employee = document.getElementById('employeeName').value;
+    if (!employee) {
+      alert("Please select an employee.");
+      return;
+    }
+
+    const cards = [];
+    const rows = document.querySelectorAll('.card-row');
+    rows.forEach(row => {
+      const name = row.querySelector('input[name="cardName"]').value.trim();
+      const qty = row.querySelector('input[name="cardQty"]').value;
+      const condition = row.querySelector('select[name="cardCondition"]').value;
+      if (name && qty && condition) {
+        cards.push({ name, quantity: parseInt(qty), condition });
+      }
+    });
+
+    if (cards.length === 0) {
+      alert("Please add at least one card.");
+      return;
+    }
+
+    const payload = { employee, cards };
+
+    try {
+      const res = await fetch('/api/buybackstep4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      statusBar.style.display = 'block';
+      if (res.ok) {
+        statusBar.style.background = '#d4edda';
+        statusBar.style.color = '#155724';
+        statusBar.innerText = 'Trade submitted successfully!';
+      } else {
+        statusBar.style.background = '#f8d7da';
+        statusBar.style.color = '#721c24';
+        statusBar.innerText = 'Error submitting trade.';
+      }
+
+      console.log("Server response:", result);
+    } catch (err) {
+      console.error("Submission error:", err);
+      statusBar.style.display = 'block';
+      statusBar.style.background = '#f8d7da';
+      statusBar.style.color = '#721c24';
+      statusBar.innerText = 'Error submitting trade.';
+    }
+  });
 });
 </script>
 
@@ -135,7 +193,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
   const tradeLog = document.getElementById('log-entries');
   const statusBar = document.getElementById('status-bar');
+  const tradeForm = document.getElementById('trade-form');
 
+  // Add card row logic (from previous version)
   document.getElementById('add-card').addEventListener('click', function () {
     const row = document.createElement('div');
     row.className = 'card-row';
@@ -201,6 +261,62 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsDiv.innerHTML = '';
       }
     });
+  });
+
+  // ✅ Trade form submission
+  tradeForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const employee = document.getElementById('employeeName').value;
+    if (!employee) {
+      alert("Please select an employee.");
+      return;
+    }
+
+    const cards = [];
+    const rows = document.querySelectorAll('.card-row');
+    rows.forEach(row => {
+      const name = row.querySelector('input[name="cardName"]').value.trim();
+      const qty = row.querySelector('input[name="cardQty"]').value;
+      const condition = row.querySelector('select[name="cardCondition"]').value;
+      if (name && qty && condition) {
+        cards.push({ name, quantity: parseInt(qty), condition });
+      }
+    });
+
+    if (cards.length === 0) {
+      alert("Please add at least one card.");
+      return;
+    }
+
+    const payload = { employee, cards };
+
+    try {
+      const res = await fetch('/api/buybackstep4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      statusBar.style.display = 'block';
+      if (res.ok) {
+        statusBar.style.background = '#d4edda';
+        statusBar.style.color = '#155724';
+        statusBar.innerText = 'Trade submitted successfully!';
+      } else {
+        statusBar.style.background = '#f8d7da';
+        statusBar.style.color = '#721c24';
+        statusBar.innerText = 'Error submitting trade.';
+      }
+
+      console.log("Server response:", result);
+    } catch (err) {
+      console.error("Submission error:", err);
+      statusBar.style.display = 'block';
+      statusBar.style.background = '#f8d7da';
+      statusBar.style.color = '#721c24';
+      statusBar.innerText = 'Error submitting trade.';
+    }
   });
 });
 </script>
