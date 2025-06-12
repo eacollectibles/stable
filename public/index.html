@@ -25,7 +25,8 @@
   <form>
     <div id="card-container">
       <div class="card-row">
-        <input type="text" name="cardName" placeholder="Card Name" required />
+        <input type="text" name="cardName" placeholder="Card Name" style="margin-right: 10px;">
+        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" style="width: 60px;"> placeholder="Card Name" required />
         <select name="condition">
           <option value="NM">NM</option>
           <option value="LP">LP</option>
@@ -44,90 +45,80 @@
     <div class="total" id="total-value"></div>
   </div>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.querySelector("form");
-      const addBtn = document.getElementById("add-card");
-      const container = document.getElementById("card-container");
-      const resultsSection = document.getElementById("results");
-      const resultList = document.getElementById("result-list");
-      const totalValue = document.getElementById("total-value");
-
-      addBtn.addEventListener("click", () => {
-        const row = document.createElement("div");
-        row.className = "card-row";
-        row.innerHTML = `
-          <input type="text" name="cardName" placeholder="Card Name" required />
-          <select name="condition">
-            <option value="NM">NM</option>
-            <option value="LP">LP</option>
-            <option value="MP">MP</option>
-          </select>
-          <button type="button" class="remove-card">❌ Remove</button>
-        `;
-        container.appendChild(row);
-      });
-
-      container.addEventListener("click", (e) => {
-        if (e.target.classList.contains("remove-card")) {
-          e.target.parentElement.remove();
-        }
-      });
-
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const cards = [];
-        document.querySelectorAll(".card-row").forEach(row => {
-          const name = row.querySelector("input[name='cardName']").value.trim();
-          const condition = row.querySelector("select[name='condition']").value;
-          if (name) {
-            cards.push({ cardName: name, condition });
-          }
-        });
-
-        fetch("/.netlify/functions/buybackstep4", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cards })
-        })
-        .then(res => res.json())
-        .then(data => {
-          resultList.innerHTML = "";
-          resultsSection.style.display = "block";
-          data.results.forEach(card => {
-            if (card.payout) {
-              resultList.innerHTML += `<div class="result-entry">${card.name} (${card.condition}) → $${card.payout}</div>`;
-            } else {
-              resultList.innerHTML += `<div class="result-entry">${card.name} (${card.condition}) → ${card.error}</div>`;
-            }
-          });
-          totalValue.textContent = "Total Trade Offer: $" + data.total;
-        });
-      });
-    });
-  </script>
+  
 
 <script>
 document.getElementById('submit-trade')?.addEventListener('click', function() {
   const input = document.querySelector('input[name="cardName"]');
+  const qtyInput = document.querySelector('input[name="cardQty"]');
   const cardName = input ? input.value : "Test Card";
+  const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
 
   fetch('/api/buybackstep4', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ cardName: cardName })
-})
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardName: cardName })
+  })
   .then(res => res.json())
   .then(data => {
-    console.log("API Response:", data);
-    alert("Received response: " + JSON.stringify(data));
+    const totalValue = (data.tradeInValue * quantity).toFixed(2);
+    const resultDiv = document.getElementById("trade-result");
+    resultDiv.innerHTML = `
+      <div style="padding: 10px; border: 1px solid #ccc; background: #f9f9f9;">
+        <strong>Card:</strong> ${data.name}<br>
+        <strong>Condition:</strong> ${data.condition}<br>
+        <strong>Quantity:</strong> ${quantity}<br>
+        <strong>Estimated Buyback Value:</strong> <span style="color: green;">$${data.tradeInValue.toFixed(2)}</span><br>
+        <strong>Total Offer:</strong> <span style="color: darkgreen; font-weight: bold;">$${totalValue}</span>
+      </div>
+    `;
   })
   .catch(err => {
-    console.error("Error contacting API:", err);
-    alert("API error. Check console.");
+    console.error("API error:", err);
+    document.getElementById("trade-result").innerHTML = "<span style='color:red;'>Error contacting API. See console for details.</span>";
   });
 });
 </script>
 
+
+
+
+
+<script>
+document.getElementById('submit-trade')?.addEventListener('click', function() {
+  const input = document.querySelector('input[name="cardName"]');
+  const qtyInput = document.querySelector('input[name="cardQty"]');
+  const cardName = input ? input.value : "Test Card";
+  const quantity = qtyInput ? parseInt(qtyInput.value) || 1 : 1;
+
+  fetch('/api/buybackstep4', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardName: cardName })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const totalValue = (data.tradeInValue * quantity).toFixed(2);
+    const resultDiv = document.getElementById("trade-result");
+    resultDiv.innerHTML = `
+      <div style="padding: 10px; border: 1px solid #ccc; background: #f9f9f9;">
+        <strong>Card:</strong> ${data.name}<br>
+        <strong>Condition:</strong> ${data.condition}<br>
+        <strong>Quantity:</strong> ${quantity}<br>
+        <strong>Estimated Buyback Value:</strong> <span style="color: green;">$${data.tradeInValue.toFixed(2)}</span><br>
+        <strong>Total Offer:</strong> <span style="color: darkgreen; font-weight: bold;">$${totalValue}</span>
+      </div>
+    `;
+  })
+  .catch(err => {
+    console.error("API error:", err);
+    document.getElementById("trade-result").innerHTML = "<span style='color:red;'>Error contacting API. See console for details.</span>";
+  });
+});
+</script>
+
+
+
+<div id="trade-result" style="margin-top: 20px; font-size: 16px;"></div>
 </body>
 </html>
