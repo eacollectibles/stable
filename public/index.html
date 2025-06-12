@@ -1,76 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>TESTING VERSION – Buyback Portal</title>
+  <meta charset="UTF-8" />
+  <title>Buyback Portal – Working</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
-    .card-row { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+    .card-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
     .remove-btn { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; }
-    #trade-result { margin-top: 20px; font-size: 16px; }
+    .search-icon { cursor: pointer; padding: 4px 8px; margin-left: 4px; }
+    .autocomplete-results { position: absolute; background: white; border: 1px solid #ccc; z-index: 10; width: 250px; }
+    .autocomplete-results div { padding: 5px; cursor: pointer; }
+    .autocomplete-results div:hover { background: #eee; }
   </style>
 </head>
 <body>
-  <div style="background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;">
-    TESTING VERSION ACTIVE
-  </div>
 
   <h2>Trade-In Cards</h2>
   <form id="trade-form">
     <label for="employeeName"><strong>Employee:</strong></label>
-    <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
+    <select name="employeeName" id="employeeName" required>
       <option value="" disabled selected>Select Employee</option>
       <option value="Alex">Alex</option>
       <option value="Jamie">Jamie</option>
       <option value="Morgan">Morgan</option>
-      <option value="Taylor">Taylor</option>
-    </select><br>
-    <div id="card-list">
-      <div class="card-row">
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
-          <option value="NM">NM</option>
-          <option value="LP">LP</option>
-          <option value="MP">MP</option>
-        </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-      </div>
-    </div>
+    </select><br><br>
+
+    <div id="card-list"></div>
     <button type="button" id="add-card">➕ Add Card</button>
     <button type="submit" id="submit-trade">Submit Trade</button>
   </form>
 
-  
-        <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
-        <div id="trade-log" style="margin-top: 20px;">
-          <h3>Trade Log</h3>
-          <div id="log-entries"></div>
-        </div>
-        <div id="trade-result">
-        </div>
-
-  
+  <div id="status-bar" style="margin-top: 20px; padding: 10px; display: none;"></div>
+  <div id="trade-log" style="margin-top: 20px;"></div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
-  const tradeLog = document.getElementById('log-entries');
   const statusBar = document.getElementById('status-bar');
-  const tradeForm = document.getElementById('trade-form');
 
-  // Add card row logic (from previous version)
-  document.getElementById('add-card').addEventListener('click', function () {
+  function createCardRow() {
     const row = document.createElement('div');
     row.className = 'card-row';
-    row.innerHTML = `
-      <div style="display: flex; flex-direction: column; position: relative;">
-        <div style="display: flex; align-items: center; gap: 5px;">
+    row.innerHTML = \`
+      <div style="position: relative;">
+        <div style="display: flex; align-items: center;">
           <input type="text" name="cardName" placeholder="Card Name" required />
           <button type="button" class="search-icon" title="Search">&#128269;</button>
         </div>
-        <div class="autocomplete-results" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 10;"></div>
+        <div class="autocomplete-results"></div>
       </div>
       <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
       <select name="cardCondition" required>
@@ -78,69 +55,58 @@ document.addEventListener('DOMContentLoaded', function () {
         <option value="LP">LP</option>
         <option value="MP">MP</option>
       </select>
-      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-    `;
+      <button type="button" class="remove-btn">✖</button>
+    \`;
     cardList.appendChild(row);
 
-    const input = row.querySelector('input[name="cardName"]');
-    const button = row.querySelector('.search-icon');
+    const nameInput = row.querySelector('input[name="cardName"]');
+    const searchBtn = row.querySelector('.search-icon');
+    const removeBtn = row.querySelector('.remove-btn');
     const resultsDiv = row.querySelector('.autocomplete-results');
 
-    button.addEventListener('click', () => {
-      const query = input.value.trim();
+    removeBtn.onclick = () => row.remove();
+
+    searchBtn.onclick = () => {
+      const query = nameInput.value.trim();
       if (query.length < 2) {
         resultsDiv.innerHTML = '<div>Enter 2+ characters</div>';
         return;
       }
-
-      fetch(\`/api/searchProducts?q=\${encodeURIComponent(query)}\`)
+      fetch('/api/searchProducts?q=' + encodeURIComponent(query))
         .then(res => res.json())
         .then(data => {
           resultsDiv.innerHTML = '';
           if (!Array.isArray(data)) {
-            resultsDiv.innerHTML = "<div>No results or API error.</div>";
+            resultsDiv.innerHTML = '<div>No results found</div>';
             return;
           }
           data.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'result-item';
-            div.innerText = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
-            div.style.padding = '5px';
-            div.style.cursor = 'pointer';
-            div.style.borderBottom = '1px solid #eee';
-            div.addEventListener('click', () => {
-              input.value = item.title;
+            div.textContent = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
+            div.onclick = () => {
+              nameInput.value = item.title;
               resultsDiv.innerHTML = '';
-            });
+            };
             resultsDiv.appendChild(div);
           });
         })
-        .catch(err => {
-          console.error("Fetch error:", err);
-          resultsDiv.innerHTML = "<div>Search failed</div>";
+        .catch(() => {
+          resultsDiv.innerHTML = '<div>Search error</div>';
         });
-    });
+    };
+  }
 
-    document.addEventListener('click', function (e) {
-      if (!resultsDiv.contains(e.target) && e.target !== button && e.target !== input) {
-        resultsDiv.innerHTML = '';
-      }
-    });
-  });
+  document.getElementById('add-card').addEventListener('click', createCardRow);
+  createCardRow(); // Add one row by default
 
-  // ✅ Trade form submission
-  tradeForm.addEventListener('submit', async function (e) {
+  document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
     const employee = document.getElementById('employeeName').value;
-    if (!employee) {
-      alert("Please select an employee.");
-      return;
-    }
-
-    const cards = [];
     const rows = document.querySelectorAll('.card-row');
+    const cards = [];
+
     rows.forEach(row => {
-      const name = row.querySelector('input[name="cardName"]').value.trim();
+      const name = row.querySelector('input[name="cardName"]').value;
       const qty = row.querySelector('input[name="cardQty"]').value;
       const condition = row.querySelector('select[name="cardCondition"]').value;
       if (name && qty && condition) {
@@ -148,175 +114,30 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
 
-    if (cards.length === 0) {
-      alert("Please add at least one card.");
+    if (!employee || cards.length === 0) {
+      alert('Please fill all required fields.');
       return;
     }
 
-    const payload = { employee, cards };
-
-    try {
-      const res = await fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await res.json();
+    fetch('/api/buybackstep4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee, cards })
+    })
+    .then(res => res.json())
+    .then(data => {
       statusBar.style.display = 'block';
-      if (res.ok) {
-        statusBar.style.background = '#d4edda';
-        statusBar.style.color = '#155724';
-        statusBar.innerText = 'Trade submitted successfully!';
-      } else {
-        statusBar.style.background = '#f8d7da';
-        statusBar.style.color = '#721c24';
-        statusBar.innerText = 'Error submitting trade.';
-      }
-
-      console.log("Server response:", result);
-    } catch (err) {
-      console.error("Submission error:", err);
+      statusBar.style.background = res.ok ? '#d4edda' : '#f8d7da';
+      statusBar.style.color = res.ok ? '#155724' : '#721c24';
+      statusBar.textContent = res.ok ? 'Trade submitted successfully!' : 'Submission failed.';
+    })
+    .catch(err => {
+      console.error(err);
       statusBar.style.display = 'block';
       statusBar.style.background = '#f8d7da';
       statusBar.style.color = '#721c24';
-      statusBar.innerText = 'Error submitting trade.';
-    }
-  });
-});
-</script>
-
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const cardList = document.getElementById('card-list');
-  const tradeLog = document.getElementById('log-entries');
-  const statusBar = document.getElementById('status-bar');
-  const tradeForm = document.getElementById('trade-form');
-
-  // Add card row logic (from previous version)
-  document.getElementById('add-card').addEventListener('click', function () {
-    const row = document.createElement('div');
-    row.className = 'card-row';
-    row.innerHTML = `
-      <div style="display: flex; flex-direction: column; position: relative;">
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <input type="text" name="cardName" placeholder="Card Name" required />
-          <button type="button" class="search-icon" title="Search">&#128269;</button>
-        </div>
-        <div class="autocomplete-results" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 10;"></div>
-      </div>
-      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-      <select name="cardCondition" required>
-        <option value="NM">NM</option>
-        <option value="LP">LP</option>
-        <option value="MP">MP</option>
-      </select>
-      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-    `;
-    cardList.appendChild(row);
-
-    const input = row.querySelector('input[name="cardName"]');
-    const button = row.querySelector('.search-icon');
-    const resultsDiv = row.querySelector('.autocomplete-results');
-
-    button.addEventListener('click', () => {
-      const query = input.value.trim();
-      if (query.length < 2) {
-        resultsDiv.innerHTML = '<div>Enter 2+ characters</div>';
-        return;
-      }
-
-      fetch(\`/api/searchProducts?q=\${encodeURIComponent(query)}\`)
-        .then(res => res.json())
-        .then(data => {
-          resultsDiv.innerHTML = '';
-          if (!Array.isArray(data)) {
-            resultsDiv.innerHTML = "<div>No results or API error.</div>";
-            return;
-          }
-          data.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'result-item';
-            div.innerText = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
-            div.style.padding = '5px';
-            div.style.cursor = 'pointer';
-            div.style.borderBottom = '1px solid #eee';
-            div.addEventListener('click', () => {
-              input.value = item.title;
-              resultsDiv.innerHTML = '';
-            });
-            resultsDiv.appendChild(div);
-          });
-        })
-        .catch(err => {
-          console.error("Fetch error:", err);
-          resultsDiv.innerHTML = "<div>Search failed</div>";
-        });
+      statusBar.textContent = 'Error submitting trade.';
     });
-
-    document.addEventListener('click', function (e) {
-      if (!resultsDiv.contains(e.target) && e.target !== button && e.target !== input) {
-        resultsDiv.innerHTML = '';
-      }
-    });
-  });
-
-  // ✅ Trade form submission
-  tradeForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const employee = document.getElementById('employeeName').value;
-    if (!employee) {
-      alert("Please select an employee.");
-      return;
-    }
-
-    const cards = [];
-    const rows = document.querySelectorAll('.card-row');
-    rows.forEach(row => {
-      const name = row.querySelector('input[name="cardName"]').value.trim();
-      const qty = row.querySelector('input[name="cardQty"]').value;
-      const condition = row.querySelector('select[name="cardCondition"]').value;
-      if (name && qty && condition) {
-        cards.push({ name, quantity: parseInt(qty), condition });
-      }
-    });
-
-    if (cards.length === 0) {
-      alert("Please add at least one card.");
-      return;
-    }
-
-    const payload = { employee, cards };
-
-    try {
-      const res = await fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await res.json();
-      statusBar.style.display = 'block';
-      if (res.ok) {
-        statusBar.style.background = '#d4edda';
-        statusBar.style.color = '#155724';
-        statusBar.innerText = 'Trade submitted successfully!';
-      } else {
-        statusBar.style.background = '#f8d7da';
-        statusBar.style.color = '#721c24';
-        statusBar.innerText = 'Error submitting trade.';
-      }
-
-      console.log("Server response:", result);
-    } catch (err) {
-      console.error("Submission error:", err);
-      statusBar.style.display = 'block';
-      statusBar.style.background = '#f8d7da';
-      statusBar.style.color = '#721c24';
-      statusBar.innerText = 'Error submitting trade.';
-    }
   });
 });
 </script>
