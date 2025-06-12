@@ -113,10 +113,10 @@ document.getElementById('submit-trade')?.addEventListener('click', function() {
   const cardName = input ? input.value : "Test Card";
 
   fetch('/api/buybackstep4', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cardName: cardName })
-  })
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ cardName: cardName })
+})
   .then(res => res.json())
   .then(data => {
     console.log("API Response:", data);
