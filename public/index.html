@@ -45,76 +45,81 @@
 
   <div id="trade-result"></div>
 
-  <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const cardList = document.getElementById('card-list');
+  
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const cardList = document.getElementById('card-list');
 
-    document.getElementById('add-card').addEventListener('click', function () {
-      const newRow = document.createElement('div');
-      newRow.className = 'card-row';
-      newRow.innerHTML = `
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
-          <option value="NM">NM</option>
-          <option value="LP">LP</option>
-          <option value="MP">MP</option>
-        </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-      `;
-      cardList.appendChild(newRow);
-    });
+  document.getElementById('add-card').addEventListener('click', function () {
+    const newRow = document.createElement('div');
+    newRow.className = 'card-row';
+    newRow.innerHTML = `
+      <input type="text" name="cardName" placeholder="Card Name" required />
+      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
+      <select name="cardCondition" required>
+        <option value="NM">NM</option>
+        <option value="LP">LP</option>
+        <option value="MP">MP</option>
+      </select>
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+    `;
+    cardList.appendChild(newRow);
+  });
 
-    document.getElementById('trade-form').addEventListener('submit', function (e) {
-      e.preventDefault();
+  document.getElementById('trade-form').addEventListener('submit', function (e) {
+    e.preventDefault();
 
-      const cardRows = document.querySelectorAll('.card-row');
-      const tradeResult = document.getElementById("trade-result");
-      tradeResult.innerHTML = "Processing...";
+    const cardRows = document.querySelectorAll('.card-row');
+    const tradeResult = document.getElementById("trade-result");
+    tradeResult.innerHTML = "Processing...";
 
-      let total = 0;
-      let processed = 0;
-      let summaryHTML = "";
+    const employee = document.getElementById('employeeName')?.value || 'Unknown';
+    let total = 0;
+    let processed = 0;
+    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
 
-      cardRows.forEach(row => {
-        const name = row.querySelector('input[name="cardName"]').value;
-        const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
-        const cond = row.querySelector('select[name="cardCondition"]').value;
+    cardRows.forEach((row, index) => {
+      const name = row.querySelector('input[name="cardName"]').value;
+      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
+      const cond = row.querySelector('select[name="cardCondition"]').value;
 
-        fetch('/api/buybackstep4', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardName: name })
-        })
-        .then(res => res.json())
-        .then(data => {
-          const cardTotal = data.tradeInValue * qty;
+      fetch('/api/buybackstep4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardName: name })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
+        } else {
+          const cardTotal = parseFloat(data.tradeInValue) * qty;
           total += cardTotal;
+
           summaryHTML += `
             <div style="margin-bottom: 10px;">
-              <strong>${name}</strong> (${cond}) x${qty}<br>
-              Unit: $${data.tradeInValue.toFixed(2)}<br>
-              Line Total: <span style="color: green;">$${cardTotal.toFixed(2)}</span>
+              <strong>${data.name}</strong> (${cond}) x${qty}<br>
+              Retail: $${data.price.toFixed(2)} | Inventory: ${data.inventory}<br>
+              Buyback Value: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
+              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
             </div>
           `;
-        })
-        .catch(err => {
-          console.error("API error:", err);
-          summaryHTML += `<div style="color: red;">${name}: Error fetching price</div>`;
-        })
-        .finally(() => {
-          processed++;
-          if (processed === cardRows.length) {
-            
-      const employee = document.getElementById('employeeName')?.value || 'Unknown';
-      tradeResult.innerHTML = `<div><strong>Processed by:</strong> ${employee}</div>` + summaryHTML +
-        `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
-`<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
-          }
-        });
+        }
+      })
+      .catch(err => {
+        console.error("API error:", err);
+        summaryHTML += `<div style="color: red;">${name}: Error contacting API</div>`;
+      })
+      .finally(() => {
+        processed++;
+        if (processed === cardRows.length) {
+          tradeResult.innerHTML = summaryHTML + `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+        }
       });
     });
   });
-  </script>
+});
+</script>
+
 </body>
 </html>
