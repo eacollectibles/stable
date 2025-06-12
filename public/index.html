@@ -19,6 +19,14 @@
 
   <h2>Trade-In Cards</h2>
   <form id="trade-form">
+    <label for="employeeName"><strong>Employee:</strong></label>
+    <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
+      <option value="" disabled selected>Select Employee</option>
+      <option value="Alex">Alex</option>
+      <option value="Jamie">Jamie</option>
+      <option value="Morgan">Morgan</option>
+      <option value="Taylor">Taylor</option>
+    </select><br>
     <div id="card-list">
       <div class="card-row">
         <input type="text" name="cardName" placeholder="Card Name" required />
@@ -97,7 +105,11 @@
         .finally(() => {
           processed++;
           if (processed === cardRows.length) {
-            tradeResult.innerHTML = summaryHTML + `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+            
+      const employee = document.getElementById('employeeName')?.value || 'Unknown';
+      tradeResult.innerHTML = `<div><strong>Processed by:</strong> ${employee}</div>` + summaryHTML +
+        `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+`<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
           }
         });
       });
