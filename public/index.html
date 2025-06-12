@@ -60,10 +60,16 @@ document.addEventListener('DOMContentLoaded', function () {
   const statusBar = document.getElementById('status-bar');
 
   document.getElementById('add-card').addEventListener('click', function () {
-    const newRow = document.createElement('div');
-    newRow.className = 'card-row';
-    newRow.innerHTML = `
-      <input type="text" name="cardName" placeholder="Card Name" required />
+    const row = document.createElement('div');
+    row.className = 'card-row';
+    row.innerHTML = `
+      <div style="display: flex; flex-direction: column; position: relative;">
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <input type="text" name="cardName" placeholder="Card Name" required />
+          <button type="button" class="search-icon" title="Search">&#128269;</button>
+        </div>
+        <div class="autocomplete-results" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 10;"></div>
+      </div>
       <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
       <select name="cardCondition" required>
         <option value="NM">NM</option>
@@ -72,88 +78,11 @@ document.addEventListener('DOMContentLoaded', function () {
       </select>
       <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
     `;
-    cardList.appendChild(newRow);
-  });
+    cardList.appendChild(row);
 
-  document.getElementById('trade-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
-      return;
-    }
-
-    const cardRows = document.querySelectorAll('.card-row');
-    const tradeResult = document.getElementById("trade-result");
-    tradeResult.innerHTML = "Processing...";
-
-    const employee = document.getElementById('employeeName')?.value || 'Unknown';
-    let total = 0;
-    let processed = 0;
-    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
-    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
-
-    cardRows.forEach((row, index) => {
-      const name = row.querySelector('input[name="cardName"]').value;
-      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
-      const cond = row.querySelector('select[name="cardCondition"]').value;
-
-      fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardName: name, quantity: qty })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
-          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
-        } else {
-          const cardTotal = parseFloat(data.tradeInValue) * qty;
-          total += cardTotal;
-          summaryHTML += `
-            <div style="margin-bottom: 10px;">
-              <strong>${data.name}</strong> (${cond}) x${qty}<br>
-              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
-              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
-              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
-            </div>
-          `;
-          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
-        }
-      })
-      .catch(err => {
-        console.error("API error:", err);
-        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
-        logEntry += `<li style="color:red;">${name}: API error</li>`;
-      })
-      .finally(() => {
-        processed++;
-        if (processed === cardRows.length) {
-          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
-          tradeResult.innerHTML = summaryHTML;
-          logEntry += `</ul><hr>`;
-          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
-          statusBar.innerText = "✅ Trade successfully processed.";
-          statusBar.style.background = "#d4edda";
-          statusBar.style.color = "#155724";
-          statusBar.style.border = "1px solid #c3e6cb";
-          statusBar.style.display = "block";
-        }
-      });
-    });
-  });
-});
-</script>
-
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.product-row').forEach(row => {
-    const input = row.querySelector('.product-name');
+    const input = row.querySelector('input[name="cardName"]');
     const button = row.querySelector('.search-icon');
     const resultsDiv = row.querySelector('.autocomplete-results');
-    if (!input || !button || !resultsDiv) return;
 
     button.addEventListener('click', () => {
       const query = input.value.trim();
@@ -162,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      fetch(`/api/searchProducts?q=${encodeURIComponent(query)}`)
+      fetch(\`/api/searchProducts?q=\${encodeURIComponent(query)}\`)
         .then(res => res.json())
         .then(data => {
           resultsDiv.innerHTML = '';
@@ -173,16 +102,89 @@ document.addEventListener('DOMContentLoaded', function () {
           data.forEach(item => {
             const div = document.createElement('div');
             div.className = 'result-item';
-            div.innerText = `${item.title} (${item.sku}) - $${item.price}`;
+            div.innerText = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
             div.style.padding = '5px';
             div.style.cursor = 'pointer';
             div.style.borderBottom = '1px solid #eee';
             div.addEventListener('click', () => {
               input.value = item.title;
-              const skuField = row.querySelector('.product-sku');
-              const priceField = row.querySelector('.product-value');
-              if (skuField) skuField.value = item.sku;
-              if (priceField) priceField.value = item.price;
+              resultsDiv.innerHTML = '';
+            });
+            resultsDiv.appendChild(div);
+          });
+        })
+        .catch(err => {
+          console.error("Fetch error:", err);
+          resultsDiv.innerHTML = "<div>Search failed</div>";
+        });
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!resultsDiv.contains(e.target) && e.target !== button && e.target !== input) {
+        resultsDiv.innerHTML = '';
+      }
+    });
+  });
+});
+</script>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const cardList = document.getElementById('card-list');
+  const tradeLog = document.getElementById('log-entries');
+  const statusBar = document.getElementById('status-bar');
+
+  document.getElementById('add-card').addEventListener('click', function () {
+    const row = document.createElement('div');
+    row.className = 'card-row';
+    row.innerHTML = `
+      <div style="display: flex; flex-direction: column; position: relative;">
+        <div style="display: flex; align-items: center; gap: 5px;">
+          <input type="text" name="cardName" placeholder="Card Name" required />
+          <button type="button" class="search-icon" title="Search">&#128269;</button>
+        </div>
+        <div class="autocomplete-results" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 10;"></div>
+      </div>
+      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
+      <select name="cardCondition" required>
+        <option value="NM">NM</option>
+        <option value="LP">LP</option>
+        <option value="MP">MP</option>
+      </select>
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+    `;
+    cardList.appendChild(row);
+
+    const input = row.querySelector('input[name="cardName"]');
+    const button = row.querySelector('.search-icon');
+    const resultsDiv = row.querySelector('.autocomplete-results');
+
+    button.addEventListener('click', () => {
+      const query = input.value.trim();
+      if (query.length < 2) {
+        resultsDiv.innerHTML = '<div>Enter 2+ characters</div>';
+        return;
+      }
+
+      fetch(\`/api/searchProducts?q=\${encodeURIComponent(query)}\`)
+        .then(res => res.json())
+        .then(data => {
+          resultsDiv.innerHTML = '';
+          if (!Array.isArray(data)) {
+            resultsDiv.innerHTML = "<div>No results or API error.</div>";
+            return;
+          }
+          data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerText = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
+            div.style.padding = '5px';
+            div.style.cursor = 'pointer';
+            div.style.borderBottom = '1px solid #eee';
+            div.addEventListener('click', () => {
+              input.value = item.title;
               resultsDiv.innerHTML = '';
             });
             resultsDiv.appendChild(div);
