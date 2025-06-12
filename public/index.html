@@ -169,6 +169,24 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+
+  // Load trade history from server on page load
+  fetch('/api/getTradeLog')
+    .then(res => res.json())
+    .then(logs => {
+      const tradeLog = document.getElementById('trade-log');
+      logs.forEach(entry => {
+        let totalRetail = 0, totalPaid = 0;
+        entry.cards.forEach(c => {
+          totalRetail += (c.quantity || 0) * (c.retail || 0);
+          totalPaid += (c.quantity || 0) * (c.tradeInValue || 0);
+        });
+        const dateStr = new Date(entry.timestamp).toLocaleString();
+        const li = document.createElement('li');
+        li.textContent = `${entry.employee} – ${entry.payoutMethod} – ${entry.cards.length} item(s) – ${dateStr} – Retail: $${totalRetail.toFixed(2)} – Paid: $${totalPaid.toFixed(2)}`;
+        tradeLog.appendChild(li);
+      });
+    }).catch(err => console.error("Error loading trade log:", err));
 </script>
 
 
