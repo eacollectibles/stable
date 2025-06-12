@@ -1,146 +1,151 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Buyback Portal – Working</title>
+  <meta charset="UTF-8">
+  <title>TESTING VERSION – Buyback Portal</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    .card-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
+    .card-row { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
     .remove-btn { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; }
-    .search-icon { cursor: pointer; padding: 4px 8px; margin-left: 4px; }
-    .autocomplete-results { position: absolute; background: white; border: 1px solid #ccc; z-index: 10; width: 250px; }
-    .autocomplete-results div { padding: 5px; cursor: pointer; }
-    .autocomplete-results div:hover { background: #eee; }
+    #trade-result { margin-top: 20px; font-size: 16px; }
   </style>
 </head>
 <body>
+  <div style="background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;">
+    TESTING VERSION ACTIVE
+  </div>
 
   <h2>Trade-In Cards</h2>
   <form id="trade-form">
     <label for="employeeName"><strong>Employee:</strong></label>
-    <select name="employeeName" id="employeeName" required>
+    <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
       <option value="" disabled selected>Select Employee</option>
       <option value="Alex">Alex</option>
       <option value="Jamie">Jamie</option>
       <option value="Morgan">Morgan</option>
-    </select><br><br>
-
-    <div id="card-list"></div>
+      <option value="Taylor">Taylor</option>
+    </select><br>
+    <div id="card-list">
+      <div class="card-row">
+        <input type="text" name="cardName" placeholder="Card Name" required />
+        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
+        <select name="cardCondition" required>
+          <option value="NM">NM</option>
+          <option value="LP">LP</option>
+          <option value="MP">MP</option>
+        </select>
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+      </div>
+    </div>
     <button type="button" id="add-card">➕ Add Card</button>
     <button type="submit" id="submit-trade">Submit Trade</button>
   </form>
 
-  <div id="status-bar" style="margin-top: 20px; padding: 10px; display: none;"></div>
-  <div id="trade-log" style="margin-top: 20px;"></div>
+  
+        <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
+        <div id="trade-log" style="margin-top: 20px;">
+          <h3>Trade Log</h3>
+          <div id="log-entries"></div>
+        </div>
+        <div id="trade-result">
+        </div>
+
+  
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
+  const tradeLog = document.getElementById('log-entries');
   const statusBar = document.getElementById('status-bar');
 
-  function createCardRow() {
-    const row = document.createElement('div');
-    row.className = 'card-row';
-    row.innerHTML = \`
-      <div style="position: relative;">
-        <div style="display: flex; align-items: center;">
-          <input type="text" name="cardName" placeholder="Card Name" required />
-          <button type="button" class="search-icon" title="Search">&#128269;</button>
-        </div>
-        <div class="autocomplete-results"></div>
-      </div>
+  document.getElementById('add-card').addEventListener('click', function () {
+    const newRow = document.createElement('div');
+    newRow.className = 'card-row';
+    newRow.innerHTML = `
+      <input type="text" name="cardName" placeholder="Card Name" required />
       <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
       <select name="cardCondition" required>
         <option value="NM">NM</option>
         <option value="LP">LP</option>
         <option value="MP">MP</option>
       </select>
-      <button type="button" class="remove-btn">✖</button>
-    \`;
-    cardList.appendChild(row);
-
-    const nameInput = row.querySelector('input[name="cardName"]');
-    const searchBtn = row.querySelector('.search-icon');
-    const removeBtn = row.querySelector('.remove-btn');
-    const resultsDiv = row.querySelector('.autocomplete-results');
-
-    removeBtn.onclick = () => row.remove();
-
-    searchBtn.onclick = () => {
-      const query = nameInput.value.trim();
-      if (query.length < 2) {
-        resultsDiv.innerHTML = '<div>Enter 2+ characters</div>';
-        return;
-      }
-      fetch('/api/searchProducts?q=' + encodeURIComponent(query))
-        .then(res => res.json())
-        .then(data => {
-          resultsDiv.innerHTML = '';
-          if (!Array.isArray(data)) {
-            resultsDiv.innerHTML = '<div>No results found</div>';
-            return;
-          }
-          data.forEach(item => {
-            const div = document.createElement('div');
-            div.textContent = \`\${item.title} (\${item.sku}) - $\${item.price}\`;
-            div.onclick = () => {
-              nameInput.value = item.title;
-              resultsDiv.innerHTML = '';
-            };
-            resultsDiv.appendChild(div);
-          });
-        })
-        .catch(() => {
-          resultsDiv.innerHTML = '<div>Search error</div>';
-        });
-    };
-  }
-
-  document.getElementById('add-card').addEventListener('click', createCardRow);
-  createCardRow(); // Add one row by default
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+    `;
+    cardList.appendChild(newRow);
+  });
 
   document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    const employee = document.getElementById('employeeName').value;
-    const rows = document.querySelectorAll('.card-row');
-    const cards = [];
 
-    rows.forEach(row => {
-      const name = row.querySelector('input[name="cardName"]').value;
-      const qty = row.querySelector('input[name="cardQty"]').value;
-      const condition = row.querySelector('select[name="cardCondition"]').value;
-      if (name && qty && condition) {
-        cards.push({ name, quantity: parseInt(qty), condition });
-      }
-    });
-
-    if (!employee || cards.length === 0) {
-      alert('Please fill all required fields.');
+    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
       return;
     }
 
-    fetch('/api/buybackstep4', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employee, cards })
-    })
-    .then(res => res.json())
-    .then(data => {
-      statusBar.style.display = 'block';
-      statusBar.style.background = res.ok ? '#d4edda' : '#f8d7da';
-      statusBar.style.color = res.ok ? '#155724' : '#721c24';
-      statusBar.textContent = res.ok ? 'Trade submitted successfully!' : 'Submission failed.';
-    })
-    .catch(err => {
-      console.error(err);
-      statusBar.style.display = 'block';
-      statusBar.style.background = '#f8d7da';
-      statusBar.style.color = '#721c24';
-      statusBar.textContent = 'Error submitting trade.';
+    const cardRows = document.querySelectorAll('.card-row');
+    const tradeResult = document.getElementById("trade-result");
+    tradeResult.innerHTML = "Processing...";
+
+    const employee = document.getElementById('employeeName')?.value || 'Unknown';
+    let total = 0;
+    let processed = 0;
+    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
+    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
+
+    cardRows.forEach((row, index) => {
+      const name = row.querySelector('input[name="cardName"]').value;
+      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
+      const cond = row.querySelector('select[name="cardCondition"]').value;
+
+      fetch('/api/buybackstep4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardName: name, quantity: qty })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
+          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
+        } else {
+          const cardTotal = parseFloat(data.tradeInValue) * qty;
+          total += cardTotal;
+          summaryHTML += `
+            <div style="margin-bottom: 10px;">
+              <strong>${data.name}</strong> (${cond}) x${qty}<br>
+              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
+              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
+              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
+            </div>
+          `;
+          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
+        }
+      })
+      .catch(err => {
+        console.error("API error:", err);
+        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
+        logEntry += `<li style="color:red;">${name}: API error</li>`;
+      })
+      .finally(() => {
+        processed++;
+        if (processed === cardRows.length) {
+          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+          tradeResult.innerHTML = summaryHTML;
+          logEntry += `</ul><hr>`;
+          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
+          statusBar.innerText = "✅ Trade successfully processed.";
+          statusBar.style.background = "#d4edda";
+          statusBar.style.color = "#155724";
+          statusBar.style.border = "1px solid #c3e6cb";
+          statusBar.style.display = "block";
+        }
+      });
     });
   });
 });
 </script>
+
 
 </body>
 </html>
