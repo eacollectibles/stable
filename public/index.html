@@ -43,12 +43,22 @@
     <button type="submit" id="submit-trade">Submit Trade</button>
   </form>
 
-  <div id="trade-result"></div>
+  
+        <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
+        <div id="trade-log" style="margin-top: 20px;">
+          <h3>Trade Log</h3>
+          <div id="log-entries"></div>
+        </div>
+        <div id="trade-result">
+        </div>
 
   
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
+  const tradeLog = document.getElementById('log-entries');
+  const statusBar = document.getElementById('status-bar');
 
   document.getElementById('add-card').addEventListener('click', function () {
     const newRow = document.createElement('div');
@@ -69,6 +79,10 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
+    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
+      return;
+    }
+
     const cardRows = document.querySelectorAll('.card-row');
     const tradeResult = document.getElementById("trade-result");
     tradeResult.innerHTML = "Processing...";
@@ -77,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let total = 0;
     let processed = 0;
     let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
+    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
 
     cardRows.forEach((row, index) => {
       const name = row.querySelector('input[name="cardName"]').value;
@@ -86,40 +101,51 @@ document.addEventListener('DOMContentLoaded', function () {
       fetch('/api/buybackstep4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardName: name })
+        body: JSON.stringify({ cardName: name, quantity: qty })
       })
       .then(res => res.json())
       .then(data => {
         if (data.error) {
           summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
+          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
         } else {
           const cardTotal = parseFloat(data.tradeInValue) * qty;
           total += cardTotal;
-
           summaryHTML += `
             <div style="margin-bottom: 10px;">
               <strong>${data.name}</strong> (${cond}) x${qty}<br>
-              Retail: $${data.price.toFixed(2)} | Inventory: ${data.inventory}<br>
-              Buyback Value: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
+              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
+              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
               <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
             </div>
           `;
+          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
         }
       })
       .catch(err => {
         console.error("API error:", err);
-        summaryHTML += `<div style="color: red;">${name}: Error contacting API</div>`;
+        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
+        logEntry += `<li style="color:red;">${name}: API error</li>`;
       })
       .finally(() => {
         processed++;
         if (processed === cardRows.length) {
-          tradeResult.innerHTML = summaryHTML + `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+          tradeResult.innerHTML = summaryHTML;
+          logEntry += `</ul><hr>`;
+          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
+          statusBar.innerText = "✅ Trade successfully processed.";
+          statusBar.style.background = "#d4edda";
+          statusBar.style.color = "#155724";
+          statusBar.style.border = "1px solid #c3e6cb";
+          statusBar.style.display = "block";
         }
       });
     });
   });
 });
 </script>
+
 
 </body>
 </html>
