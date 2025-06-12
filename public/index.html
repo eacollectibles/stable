@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trade In Portal</title>
+  <title>TESTING VERSION – Trade In Portal</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
     h1 { font-size: 2rem; margin-bottom: 20px; }
@@ -20,6 +20,7 @@
   </style>
 </head>
 <body>
+<div style='background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;'>TESTING VERSION ACTIVE</div>
   <h1>Trade In Portal</h1>
   <form>
     <div id="card-container">
@@ -30,7 +31,7 @@
           <option value="LP">LP</option>
           <option value="MP">MP</option>
         </select>
-       <button type="button" class="remove-card" style="padding: 4px 10px;" title="Remove Card">✖</button>
+        <button type="button" class="remove-card">❌ Remove</button>
       </div>
     </div>
     <button type="button" id="add-card">➕ Add Card</button>
@@ -105,5 +106,28 @@
       });
     });
   </script>
+
+<script>
+document.getElementById('submit-trade')?.addEventListener('click', function() {
+  const input = document.querySelector('input[name="cardName"]');
+  const cardName = input ? input.value : "Test Card";
+
+  fetch('/api/buybackstep4', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardName: cardName })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("API Response:", data);
+    alert("Received response: " + JSON.stringify(data));
+  })
+  .catch(err => {
+    console.error("Error contacting API:", err);
+    alert("API error. Check console.");
+  });
+});
+</script>
+
 </body>
 </html>
