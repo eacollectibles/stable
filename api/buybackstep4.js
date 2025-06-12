@@ -1,6 +1,4 @@
 
-const fetch = require('node-fetch');
-
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -23,9 +21,8 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    const text = await shopifyRes.text();  // Try to read as plain text first for better debugging
+    const text = await shopifyRes.text();
 
-    // Try to parse it as JSON
     let data;
     try {
       data = JSON.parse(text);
@@ -53,4 +50,4 @@ module.exports = async function handler(req, res) {
     console.error('Shopify API Error:', err);
     return res.status(500).json({ error: 'Failed to connect to Shopify API', details: err.message });
   }
-}
+};
