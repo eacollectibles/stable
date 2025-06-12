@@ -1,151 +1,54 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>TESTING VERSION – Buyback Portal</title>
+  <title>Buyback Autocomplete</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
-    .card-row { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-    .remove-btn { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; }
-    #trade-result { margin-top: 20px; font-size: 16px; }
+    body { font-family: Arial; padding: 20px; }
+    #results { border: 1px solid #ccc; max-width: 400px; }
+    .result-item { padding: 5px; cursor: pointer; }
+    .result-item:hover { background: #eee; }
   </style>
 </head>
 <body>
-  <div style="background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;">
-    TESTING VERSION ACTIVE
-  </div>
 
-  <h2>Trade-In Cards</h2>
-  <form id="trade-form">
-    <label for="employeeName"><strong>Employee:</strong></label>
-    <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
-      <option value="" disabled selected>Select Employee</option>
-      <option value="Alex">Alex</option>
-      <option value="Jamie">Jamie</option>
-      <option value="Morgan">Morgan</option>
-      <option value="Taylor">Taylor</option>
-    </select><br>
-    <div id="card-list">
-      <div class="card-row">
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
-          <option value="NM">NM</option>
-          <option value="LP">LP</option>
-          <option value="MP">MP</option>
-        </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-      </div>
-    </div>
-    <button type="button" id="add-card">➕ Add Card</button>
-    <button type="submit" id="submit-trade">Submit Trade</button>
-  </form>
-
-  
-        <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
-        <div id="trade-log" style="margin-top: 20px;">
-          <h3>Trade Log</h3>
-          <div id="log-entries"></div>
-        </div>
-        <div id="trade-result">
-        </div>
-
-  
+<h2>Buyback Autocomplete</h2>
+<input type="text" id="search" placeholder="Type card name or number (e.g. 108/112)" autocomplete="off">
+<div id="results"></div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const cardList = document.getElementById('card-list');
-  const tradeLog = document.getElementById('log-entries');
-  const statusBar = document.getElementById('status-bar');
+  const searchInput = document.getElementById('search');
+  const resultsDiv = document.getElementById('results');
+  let timeout = null;
 
-  document.getElementById('add-card').addEventListener('click', function () {
-    const newRow = document.createElement('div');
-    newRow.className = 'card-row';
-    newRow.innerHTML = `
-      <input type="text" name="cardName" placeholder="Card Name" required />
-      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-      <select name="cardCondition" required>
-        <option value="NM">NM</option>
-        <option value="LP">LP</option>
-        <option value="MP">MP</option>
-      </select>
-      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-    `;
-    cardList.appendChild(newRow);
-  });
-
-  document.getElementById('trade-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
+  searchInput.addEventListener('input', function() {
+    clearTimeout(timeout);
+    const query = this.value.trim();
+    if (query.length < 2) {
+      resultsDiv.innerHTML = '';
       return;
     }
 
-    const cardRows = document.querySelectorAll('.card-row');
-    const tradeResult = document.getElementById("trade-result");
-    tradeResult.innerHTML = "Processing...";
-
-    const employee = document.getElementById('employeeName')?.value || 'Unknown';
-    let total = 0;
-    let processed = 0;
-    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
-    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
-
-    cardRows.forEach((row, index) => {
-      const name = row.querySelector('input[name="cardName"]').value;
-      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
-      const cond = row.querySelector('select[name="cardCondition"]').value;
-
-      fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardName: name, quantity: qty })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
-          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
-        } else {
-          const cardTotal = parseFloat(data.tradeInValue) * qty;
-          total += cardTotal;
-          summaryHTML += `
-            <div style="margin-bottom: 10px;">
-              <strong>${data.name}</strong> (${cond}) x${qty}<br>
-              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
-              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
-              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
-            </div>
-          `;
-          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
-        }
-      })
-      .catch(err => {
-        console.error("API error:", err);
-        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
-        logEntry += `<li style="color:red;">${name}: API error</li>`;
-      })
-      .finally(() => {
-        processed++;
-        if (processed === cardRows.length) {
-          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
-          tradeResult.innerHTML = summaryHTML;
-          logEntry += `</ul><hr>`;
-          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
-          statusBar.innerText = "✅ Trade successfully processed.";
-          statusBar.style.background = "#d4edda";
-          statusBar.style.color = "#155724";
-          statusBar.style.border = "1px solid #c3e6cb";
-          statusBar.style.display = "block";
-        }
-      });
-    });
+    timeout = setTimeout(() => {
+      fetch(`/api/searchProducts?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => {
+          resultsDiv.innerHTML = '';
+          data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'result-item';
+            div.innerText = `${item.title} (${item.card_number || item.sku}) - $${item.price}`;
+            div.onclick = () => {
+              searchInput.value = item.title;
+              resultsDiv.innerHTML = '';
+              // Add logic to autofill other fields as needed
+            };
+            resultsDiv.appendChild(div);
+          });
+        });
+    }, 300);
   });
-});
 </script>
-
 
 </body>
 </html>
