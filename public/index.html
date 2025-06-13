@@ -48,6 +48,7 @@
     </div>
     <button type="button" id="add-card">➕ Add Card</button>
     <button type="submit" id="submit-trade">Submit Trade</button>
+<button type="button" id="estimate-trade" style="background-color: #007bff; color: white; font-weight: bold;">Estimate</button>
   
     <div id="card-image-upload" style="margin-top: 10px;">
       <label for="cardImage"><strong>Upload Card Image (optional):</strong></label>
@@ -136,6 +137,60 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+document.getElementById("estimate-trade").addEventListener("click", function () {
+  const statusBar = document.getElementById("statusBar");
+  const cardRows = Array.from(document.querySelectorAll('.card-row'));
+  const cards = [];
+
+  cardRows.forEach(row => {
+    const cardNameInput = row.querySelector('input[name="cardName"]');
+    const quantityInput = row.querySelector('input[name="cardQuantity"]');
+    const cardName = cardNameInput?.value?.trim() || '';
+    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
+
+    if (cardName && quantity > 0) {
+      cards.push({ cardName, quantity });
+    }
+  });
+
+  const employeeName = document.getElementById('employeeName')?.value || '';
+  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
+
+  statusBar.textContent = "Calculating estimate...";
+  statusBar.style.color = "black";
+
+  fetch("/api/buybackstep4?estimate=true", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employeeName, payoutMethod, cards })
+  })
+  .then(res => res.json())
+  .then(data => {
+    let status = "Estimate complete!";
+    let retailTotal = 0;
+
+    if (Array.isArray(data.results)) {
+      data.results.forEach(result => {
+        if (result.retailPrice && result.quantity) {
+          retailTotal += parseFloat(result.retailPrice) * result.quantity;
+        }
+      });
+    }
+
+    status += " | Retail Total: $" + retailTotal.toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
+
+    statusBar.textContent = status;
+    statusBar.style.color = "blue";
+  })
+  .catch(err => {
+    console.error("Error estimating trade:", err);
+    statusBar.textContent = "Error calculating estimate.";
+    statusBar.style.color = "red";
+  });
+});
+
 </script>
 
     
@@ -249,6 +304,60 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
+
+document.getElementById("estimate-trade").addEventListener("click", function () {
+  const statusBar = document.getElementById("statusBar");
+  const cardRows = Array.from(document.querySelectorAll('.card-row'));
+  const cards = [];
+
+  cardRows.forEach(row => {
+    const cardNameInput = row.querySelector('input[name="cardName"]');
+    const quantityInput = row.querySelector('input[name="cardQuantity"]');
+    const cardName = cardNameInput?.value?.trim() || '';
+    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
+
+    if (cardName && quantity > 0) {
+      cards.push({ cardName, quantity });
+    }
+  });
+
+  const employeeName = document.getElementById('employeeName')?.value || '';
+  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
+
+  statusBar.textContent = "Calculating estimate...";
+  statusBar.style.color = "black";
+
+  fetch("/api/buybackstep4?estimate=true", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ employeeName, payoutMethod, cards })
+  })
+  .then(res => res.json())
+  .then(data => {
+    let status = "Estimate complete!";
+    let retailTotal = 0;
+
+    if (Array.isArray(data.results)) {
+      data.results.forEach(result => {
+        if (result.retailPrice && result.quantity) {
+          retailTotal += parseFloat(result.retailPrice) * result.quantity;
+        }
+      });
+    }
+
+    status += " | Retail Total: $" + retailTotal.toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
+
+    statusBar.textContent = status;
+    statusBar.style.color = "blue";
+  })
+  .catch(err => {
+    console.error("Error estimating trade:", err);
+    statusBar.textContent = "Error calculating estimate.";
+    statusBar.style.color = "red";
+  });
+});
+
 </script>
 
 </body>

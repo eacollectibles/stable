@@ -45,11 +45,7 @@ module.exports = async function handler(req, res) {
 
     results.push({
       cardName,
-      
-      tradeInValue,
-      quantity,
-      retailPrice: parseFloat(variant.price || 0),
-      
+      match: productData.products[0].title,
       tradeInValue,
       quantity,
     });
@@ -59,7 +55,9 @@ module.exports = async function handler(req, res) {
 
   let giftCardCode = null;
 
-  if (payoutMethod?.toLowerCase() === "store-credit" && totalValue > 0) {
+  const isEstimate = req.query?.estimate === 'true';
+
+  if (!isEstimate && payoutMethod?.toLowerCase() === "store-credit" && totalValue > 0) {
     const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
       method: "POST",
       headers: {
