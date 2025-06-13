@@ -15,176 +15,104 @@ module.exports = async function handler(req, res) {
     const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
     const ACCESS_TOKEN = "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";
 
-    
-const fetchVariantBySKU = async (sku) => {
-  const query = `
-    {
-      productVariants(first: 1, query: "sku:${sku}") {
-        edges {
-          node {
-            id
-            title
-            sku
-            price
-            inventoryQuantity
-            product {
-              title
+    const fetchVariantBySKU = async (sku) => {
+      const query = `
+        {
+          productVariants(first: 1, query: "sku:${sku}") {
+            edges {
+              node {
+                id
+                title
+                sku
+                price
+                compareAtPrice
+                inventoryQuantity
+                product {
+                  title
+                }
+              }
             }
           }
         }
-      }
-    }
-  `;
+      `;
 
-  const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
-    method: 'POST',
-    headers: {
-      'X-Shopify-Access-Token': ACCESS_TOKEN,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query })
-  });
+      const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
 
-  const json = await graphqlRes.json();
-  const variantEdge = json?.data?.productVariants?.edges?.[0];
-  return variantEdge?.node || null;
-};
+      const json = await graphqlRes.json();
+      return json?.data?.productVariants?.edges?.[0]?.node || null;
+    };
 
-  let totalValue = 0;
+    let totalValue = 0;
     const results = [];
 
     for (const card of cards) {
       const { cardName, sku = null, quantity = 1 } = card;
+      const matchedVariant = await fetchVariantBySKU(sku || cardName);
 
-      const productRes = await fetch(
-        `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`,
-        {
-          method: 'GET',
-          headers: {
-            'X-Shopify-Access-Token': ACCESS_TOKEN,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      if (matchedVariant) {
+        const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
+        const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
+        totalValue += tradeInValue * quantity;
 
-      const productText = await productRes.text();
-      let productData;
-
-      try {
-        productData = JSON.parse(productText);
-      } catch (err) {
-        return res.status(500).json({ error: 'Failed to parse product data', details: err.message });
-      }
-
-      // If no product by title, try variant SKU match
-      if (!productData || !productData.products || productData.products.length === 0) {
-        const variantsRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json`, {
-          method: 'GET',
-          headers: {
-            'X-Shopify-Access-Token': ACCESS_TOKEN,
-            'Content-Type': 'application/json'
-          }
+        results.push({
+          cardName: matchedVariant.title,
+          match: matchedVariant.title,
+          itemValue,
+          tradeInValue,
+          quantity
         });
-
-        const variantsText = await variantsRes.text();
-        let variantsData;
-        try {
-          variantsData = JSON.parse(variantsText);
-        } catch (parseErr) {
-          return res.status(500).json({ error: 'Failed to parse variants data', details: parseErr.message });
-        }
-
-        const matchedVariant = await fetchVariantBySKU(sku || cardName);
-        if (matchedVariant) {
-          const variantPrice = parseFloat(matchedVariant.price || 0);
-          const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
-          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
-          results.push({
-            cardName: matchedVariant.title,
-            match: matchedVariant.title,
-            itemValue,
-            tradeInValue,
-            quantity
-          });
-          continue;
-        }
-        if (matchedVariant) {
-          const variantPrice = parseFloat(matchedVariant.price || 0);
-          const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
-          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
-          results.push({
-            cardName: matchedVariant.title,
-            match: matchedVariant.title,
-            itemValue,
-            tradeInValue,
-            quantity
-          });
-          continue;
-        } else {
-          results.push({
-            cardName,
-            match: null,
-            tradeInValue: 0,
-            quantity
-          });
-          continue;
-        }
+      } else {
+        results.push({
+          cardName,
+          match: null,
+          itemValue: 0,
+          tradeInValue: 0,
+          quantity
+        });
       }
-
-      // Fallback to first product variant
-      const match = productData.products[0];
-      const variant = match.variants[0];
-      const variantPrice = parseFloat(variant.price || 0);
-      const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
-          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
-      totalValue += tradeInValue * quantity;
-
-      results.push({
-        cardName,
-        match: match.title,
-        itemValue,
-            tradeInValue,
-        quantity
-      });
     }
 
     const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
 
-    
-  let giftCardCode = null;
-  if (payoutMethod === "store-credit") {
-    try {
-      const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
-        method: "POST",
-        headers: {
-          "X-Shopify-Access-Token": ACCESS_TOKEN,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          gift_card: {
-            initial_value: finalPayout.toFixed(2),
-            note: `Buyback payout for ${employeeName || "Unknown"}`,
-            currency: "CAD"
-          }
-        })
-      });
-      const giftCardData = await giftCardRes.json();
-      giftCardCode = giftCardData?.gift_card?.code || null;
-    } catch (err) {
-      console.error("Gift card creation failed:", err);
+    let giftCardCode = null;
+    if (payoutMethod === "store-credit" && finalPayout > 0) {
+      try {
+        const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
+          method: "POST",
+          headers: {
+            "X-Shopify-Access-Token": ACCESS_TOKEN,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            gift_card: {
+              initial_value: finalPayout.toFixed(2),
+              note: `Buyback payout for ${employeeName || "Unknown"}`,
+              currency: "CAD"
+            }
+          })
+        });
+        const giftCardData = await giftCardRes.json();
+        giftCardCode = giftCardData?.gift_card?.code || null;
+      } catch (err) {
+        console.error("Gift card creation failed:", err);
+      }
     }
-  }
 
-  res.status(200).json({
-      giftCardCode,
+    res.status(200).json({
       estimate: estimateMode,
       employeeName,
       payoutMethod,
       results,
       total: totalValue.toFixed(2),
-      overrideTotal: overrideTotal ? finalPayout.toFixed(2) : null
+      overrideTotal: overrideTotal ? finalPayout.toFixed(2) : null,
+      giftCardCode
     });
   } catch (err) {
     console.error("Fatal API Error:", err);
