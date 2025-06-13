@@ -42,12 +42,12 @@ module.exports = async function handler(req, res) {
     }
 
     
-    const variant = productData.products[0].variants[0];
+    
     const tradeInValue = parseFloat(variant.compare_at_price || variant.price) * 0.3;
 
     results.push({
       cardName,
-      match: productData.products[0].title,
+      match: productData.product.title,
       tradeInValue,
       quantity,
       retailPrice: parseFloat(variant.price || 0)
