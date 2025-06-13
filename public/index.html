@@ -70,64 +70,90 @@
       <ul id="logList" style="list-style-type: disc; padding-left: 20px;"></ul>
     </div>
 
-    
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const form = document.getElementById('trade-form');
-  const statusBar = document.getElementById('statusBar');
+    <script>
+      document.getElementById('testButton').addEventListener('click', function () {
+        const name = document.getElementById('employeeName').value;
+        if (!name) {
+          alert("Please select an employee.");
+        } else {
+          alert("Test passed. Employee selected: " + name);
+        }
+      });
 
-  if (!form || !statusBar) {
-    console.error("Form or status bar not found.");
-    return;
-  }
+      document.getElementById('trade-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!confirm("Are you sure you want to submit this trade?")) return;
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (!confirm("Are you sure you want to submit this trade?")) return;
+        const statusBar = document.getElementById('statusBar');
+        const logList = document.getElementById('logList');
 
-    statusBar.textContent = "Processing...";
-    statusBar.style.color = "black";
+        statusBar.textContent = "Processing...";
+        statusBar.style.color = "blue";
 
-    const cardRows = Array.from(document.querySelectorAll('.card-row'));
-    const cards = [];
-
-    cardRows.forEach(row => {
-      const cardNameInput = row.querySelector('input[name="cardName"]');
-      const quantityInput = row.querySelector('input[name="cardQuantity"]');
-      const cardName = cardNameInput?.value?.trim() || '';
-      const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
-
-      if (cardName && quantity > 0) {
-        cards.push({ cardName, quantity });
-      }
-    });
-
-    const employeeName = document.getElementById('employeeName')?.value || '';
-    const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
+        // Simulate success
+        
     fetch("/api/buybackstep4", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeName, payoutMethod, cards })
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        employeeName: document.getElementById('employeeName').value,
+        payoutMethod: document.querySelector('input[name="payoutMethod"]:checked')?.value || "Cash",
+        cards: Array.from(document.querySelectorAll('.card-row')).map(row => {
+          const cardName = row.querySelector('input[name="cardName"]')?.value || '';
+          const quantity = parseInt(row.querySelector('input[name="cardQuantity"]')?.value || '1');
+          console.log("Extracted card:", cardName, quantity); return { cardName, quantity };
+        })
+      })
     })
     .then(res => res.json())
     .then(data => {
-      statusBar.textContent = "Trade submitted successfully!";
-      statusBar.style.color = "green";
 
-      if (data.giftCardCode) {
-        statusBar.textContent += " 🎁 Gift Card Code: " + data.giftCardCode;
-      }
+          
+    statusBar.textContent = "Trade submitted successfully!";
+    
+    console.log("Trade API response:", data);
+    if (data.giftCardCode) {
+    
+      const giftMsg = document.createElement('div');
+      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
+      giftMsg.style.marginTop = "10px";
+      giftMsg.style.fontSize = "16px";
+      giftMsg.style.background = "#e0ffe0";
+      giftMsg.style.padding = "10px";
+      giftMsg.style.border = "1px solid #ccc";
+      giftMsg.style.borderRadius = "5px";
+      statusBar.appendChild(giftMsg);
+    }
+    
+          statusBar.style.color = "green";
+
+          const logItem = document.createElement('li');
+          logItem.textContent = "Trade submitted by " + document.getElementById('employeeName').value + " at " + new Date().toLocaleTimeString();
+          logList.appendChild(logItem);
+        
     })
     .catch(err => {
-      console.error("Error submitting trade:", err);
       statusBar.textContent = "Error submitting trade.";
       statusBar.style.color = "red";
     });
-  });
-});
-</script>
-
+    
+      });
+    
+      function previewImage(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('imagePreview');
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+          }
+          reader.readAsDataURL(file);
+        }
+      }
+    </script>
     
     
 
@@ -142,64 +168,110 @@ document.addEventListener("DOMContentLoaded", function () {
 
   
 
-
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-  const form = document.getElementById('trade-form');
-  const statusBar = document.getElementById('statusBar');
+document.addEventListener('DOMContentLoaded', function () {
+  const cardList = document.getElementById('card-list');
+  const tradeLog = document.getElementById('log-entries');
+  const statusBar = document.getElementById('status-bar');
 
-  if (!form || !statusBar) {
-    console.error("Form or status bar not found.");
-    return;
-  }
+  document.getElementById('add-card').addEventListener('click', function () {
+    const newRow = document.createElement('div');
+    newRow.className = 'card-row';
+    newRow.innerHTML = `
+      <input type="text" name="cardName" name="cardName" placeholder="Card Name" required />
+      <input type="number" name="cardQuantity" name="cardQty" placeholder="Qty" min="1" value="1" required />
+      <select name="cardCondition" required>
+        <option value="NM">NM</option>
+        <option value="LP">LP</option>
+        <option value="MP">MP</option>
+      </select>
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+    `;
+    cardList.appendChild(newRow);
+  });
 
-  form.addEventListener('submit', function (e) {
+  document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!confirm("Are you sure you want to submit this trade?")) return;
 
-    statusBar.textContent = "Processing...";
-    statusBar.style.color = "black";
+    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
+      return;
+    }
 
-    const cardRows = Array.from(document.querySelectorAll('.card-row'));
-    const cards = [];
+    const cardRows = document.querySelectorAll('.card-row');
+    const tradeResult = document.getElementById("trade-result");
+    tradeResult.innerHTML = "Processing...";
 
-    cardRows.forEach(row => {
-      const cardNameInput = row.querySelector('input[name="cardName"]');
-      const quantityInput = row.querySelector('input[name="cardQuantity"]');
-      const cardName = cardNameInput?.value?.trim() || '';
-      const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
+    const employee = document.getElementById('employeeName')?.value || 'Unknown';
+    let total = 0;
+    let processed = 0;
+    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
+    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
 
-      if (cardName && quantity > 0) {
-        cards.push({ cardName, quantity });
-      }
-    });
+    cardRows.forEach((row, index) => {
+      const name = row.querySelector('input[name="cardName"]').value;
+      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
+      const cond = row.querySelector('select[name="cardCondition"]').value;
 
-    const employeeName = document.getElementById('employeeName')?.value || '';
-    const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
-    fetch("/api/buybackstep4", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeName, payoutMethod, cards })
-    })
-    .then(res => res.json())
-    .then(data => {
-      statusBar.textContent = "Trade submitted successfully!";
-      statusBar.style.color = "green";
-
-      if (data.giftCardCode) {
-        statusBar.textContent += " 🎁 Gift Card Code: " + data.giftCardCode;
-      }
-    })
-    .catch(err => {
-      console.error("Error submitting trade:", err);
-      statusBar.textContent = "Error submitting trade.";
-      statusBar.style.color = "red";
+      fetch('/api/buybackstep4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardName: name, quantity: qty })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
+          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
+        } else {
+          const cardTotal = parseFloat(data.tradeInValue) * qty;
+          total += cardTotal;
+          summaryHTML += `
+            <div style="margin-bottom: 10px;">
+              <strong>${data.name}</strong> (${cond}) x${qty}<br>
+              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
+              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
+              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
+            </div>
+          `;
+          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
+        }
+      })
+      .catch(err => {
+        console.error("API error:", err);
+        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
+        logEntry += `<li style="color:red;">${name}: API error</li>`;
+      })
+      .finally(() => {
+        processed++;
+        if (processed === cardRows.length) {
+          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
+          tradeResult.innerHTML = summaryHTML;
+          logEntry += `</ul><hr>`;
+          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
+          statusBar.innerText = "✅ Trade successfully processed.";
+          statusBar.style.background = "#d4edda";
+          statusBar.style.color = "#155724";
+          statusBar.style.border = "1px solid #c3e6cb";
+          statusBar.style.display = "block";
+        }
+      });
     });
   });
 });
-</script>
 
+      function previewImage(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById('imagePreview');
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+          }
+          reader.readAsDataURL(file);
+        }
+      }
+    </script>
     
 
 
