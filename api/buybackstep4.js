@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
   const results = [];
 
   for (const card of cards) {
-    const { cardName, quantity = 1 } = card;
+    const { cardName, sku = null, quantity = 1 } = card;
 
     const productRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
       method: 'GET',
@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
           return res.status(500).json({ error: 'Failed to parse variants data' });
         }
 
-        const matchedVariant = variantsData.variants.find(v => v.sku === cardName);
+        const matchedVariant = variantsData.variants.find(v => v.sku === (sku || cardName));
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
           const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
