@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   const { q } = req.query;
 
   try {
-    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json?fields=id,title,variants,images`, {
+    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json?limit=250`, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_API_PASSWORD,
@@ -15,22 +15,39 @@ export default async function handler(req, res) {
     const data = await shopifyRes.json();
     const products = data.products || [];
 
-    const matched = products.filter(p =>
-      p.title.toLowerCase().includes(q.toLowerCase()) ||
-      p.variants[0]?.sku?.toLowerCase().includes(q.toLowerCase())
-    ).slice(0, 5);
-
     const placeholder = "https://via.placeholder.com/60x60.png?text=No+Image";
+    const debugSkus = [];
 
-    const results = matched.map(product => ({
-      title: product.title,
-      sku: product.variants[0]?.sku,
-      price: product.variants[0]?.price,
-      image: product.images?.[0]?.src || placeholder,
-      debug: `Matched: ${product.title} | SKU: ${product.variants[0]?.sku} | Image: ${product.images?.[0]?.src || 'None'}`
-    }));
+    const matched = [];
 
-    res.status(200).json(results);
+    for (const product of products) {
+      for (const variant of product.variants) {
+        debugSkus.push(variant.sku || "(no sku)");
+
+        if (variant.sku?.toLowerCase().includes(q.toLowerCase())) {
+          matched.push({
+            title: product.title,
+            sku: variant.sku,
+            price: variant.price,
+            image: product.images?.[0]?.src || placeholder,
+            debug: `Matched SKU: ${variant.sku}`
+          });
+          break;
+        }
+      }
+
+      if (!matched.length && product.title.toLowerCase().includes(q.toLowerCase())) {
+        matched.push({
+          title: product.title,
+          sku: product.variants[0]?.sku,
+          price: product.variants[0]?.price,
+          image: product.images?.[0]?.src || placeholder,
+          debug: `Matched Title: ${product.title}`
+        });
+      }
+    }
+
+    res.status(200).json({ matched: matched.slice(0, 5), debugSkus });
   } catch (err) {
     console.error("Shopify fetch error:", err);
     res.status(500).json({ error: "Failed to search products" });
