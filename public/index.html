@@ -88,7 +88,7 @@ document.getElementById('trade-form').addEventListener('submit', function (e) {
     const cardNameInput = row.querySelector('input[name="cardName"]');
     const quantityInput = row.querySelector('input[name="cardQuantity"]');
     const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = parseInt(quantityInput?.value || '1', 10);
+    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
 
     if (cardName.length > 0 && quantity > 0) {
       cards.push({ cardName, quantity });
@@ -248,7 +248,7 @@ document.getElementById('trade-form').addEventListener('submit', function (e) {
     const cardNameInput = row.querySelector('input[name="cardName"]');
     const quantityInput = row.querySelector('input[name="cardQuantity"]');
     const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = parseInt(quantityInput?.value || '1', 10);
+    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
 
     if (cardName.length > 0 && quantity > 0) {
       cards.push({ cardName, quantity });

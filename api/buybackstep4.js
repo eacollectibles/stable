@@ -55,7 +55,7 @@ module.exports = async function handler(req, res) {
 
   let giftCardCode = null;
 
-  if (payoutMethod === "Store Credit" && totalValue > 0) {
+  if (payoutMethod?.toLowerCase() === "store-credit" && totalValue > 0) {
     const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
       method: "POST",
       headers: {
