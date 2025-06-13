@@ -31,6 +31,47 @@ module.exports = async function handler(req, res) {
     let productData;
     try {
       productData = JSON.parse(productText);
+      // If no product found by title, attempt to search all variants by SKU
+      if (!productData || !productData.products || productData.products.length === 0) {
+        const variantsRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json`, {
+          method: 'GET',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const variantsText = await variantsRes.text();
+        let variantsData;
+        try {
+          variantsData = JSON.parse(variantsText);
+        } catch (parseErr) {
+          return res.status(500).json({ error: 'Failed to parse variants data' });
+        }
+
+        const matchedVariant = variantsData.variants.find(v => v.sku === cardName);
+        if (matchedVariant) {
+          const variantPrice = parseFloat(matchedVariant.price || 0);
+          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          totalValue += tradeInValue * quantity;
+          results.push({
+            cardName: matchedVariant.title,
+            match: matchedVariant.title,
+            tradeInValue,
+            quantity
+          });
+          continue;
+        } else {
+          results.push({
+            cardName,
+            match: null,
+            tradeInValue: 0,
+            quantity
+          });
+          continue;
+        }
+      }
+    
     } catch (parseErr) {
       return res.status(500).json({ error: "Invalid JSON from Shopify", raw: productText });
     }
@@ -42,12 +83,12 @@ module.exports = async function handler(req, res) {
     }
 
     
-    const variant = productData.products[0].variants[0];
+    
     const tradeInValue = parseFloat(variant.compare_at_price || variant.price) * 0.3;
 
     results.push({
       cardName,
-      match: productData.products[0].title,
+      match: productData.product.title,
       tradeInValue,
       quantity,
       retailPrice: parseFloat(variant.price || 0)
@@ -87,32 +128,3 @@ module.exports = async function handler(req, res) {
     giftCardCode
   });
 };
-
-
-// SKU matching fallback
-
-// SKU fallback logic (injected)
-if (!matchedProduct && searchInput) {
-  const variantsResponse = await fetch(`https://${shop}.myshopify.com/admin/api/2023-10/variants.json`, {
-    headers: {
-      'X-Shopify-Access-Token': process.env.SHOPIFY_API_KEY,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  if (variantsResponse.ok) {
-    const variantsData = await variantsResponse.json();
-    const matchedVariant = variantsData.variants.find(v => v.sku === searchInput);
-
-    if (matchedVariant) {
-      matchedProduct = {
-        name: matchedVariant.title,
-        sku: matchedVariant.sku,
-        price: matchedVariant.price,
-        inventory: matchedVariant.inventory_quantity,
-        condition: condition,
-        tradeInValue: calculateTradeInValue(matchedVariant.price, condition)
-      };
-    }
-  }
-}
