@@ -87,3 +87,32 @@ module.exports = async function handler(req, res) {
     giftCardCode
   });
 };
+
+
+// SKU matching fallback
+
+// SKU fallback logic (injected)
+if (!matchedProduct && searchInput) {
+  const variantsResponse = await fetch(`https://${shop}.myshopify.com/admin/api/2023-10/variants.json`, {
+    headers: {
+      'X-Shopify-Access-Token': process.env.SHOPIFY_API_KEY,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (variantsResponse.ok) {
+    const variantsData = await variantsResponse.json();
+    const matchedVariant = variantsData.variants.find(v => v.sku === searchInput);
+
+    if (matchedVariant) {
+      matchedProduct = {
+        name: matchedVariant.title,
+        sku: matchedVariant.sku,
+        price: matchedVariant.price,
+        inventory: matchedVariant.inventory_quantity,
+        condition: condition,
+        tradeInValue: calculateTradeInValue(matchedVariant.price, condition)
+      };
+    }
+  }
+}
