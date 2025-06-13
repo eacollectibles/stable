@@ -36,7 +36,7 @@
 
     <div id="card-list">
       <div class="card-row">
-        <input type="text" name="cardName" placeholder="Card Name" required /> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;">
+        <input type="text" name="cardName" placeholder="Card Name" required /> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;"><br><span class="image-debug" style="font-size:0.8em; color:gray;"></span> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;">
         <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
         <select name="cardCondition" required>
           <option value="NM">NM</option>
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const newRow = document.createElement('div');
     newRow.className = 'card-row';
     newRow.innerHTML = `
-      <input type="text" name="cardName" placeholder="Card Name" required /> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;">
+      <input type="text" name="cardName" placeholder="Card Name" required /> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;"><br><span class="image-debug" style="font-size:0.8em; color:gray;"></span> <img class="cardPreview" src="" alt="Card Image" style="display:none; width:60px; height:auto; margin-left:10px; vertical-align:middle;">
       <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
       <select name="cardCondition" required>
         <option value="NM">NM</option>
