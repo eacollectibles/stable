@@ -48,14 +48,10 @@
     </div>
     <button type="button" id="add-card">➕ Add Card</button>
     <button type="submit" id="submit-trade">Submit Trade</button>
-  <div id="statusMessage" style="margin-top: 10px; font-weight: bold;"></div></form>
+  </form>
 
   
         <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
-
-<h3>Trade Summary</h3>
-<ul id="trade-log" style="list-style: none; padding-left: 0;"></ul>
-
         <div id="trade-log" style="margin-top: 20px;">
           <h3>Trade Log</h3>
           <div id="log-entries"></div>
@@ -146,20 +142,6 @@ document.addEventListener('DOMContentLoaded', function () {
           logEntry += `</ul><hr>`;
           tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
           statusBar.innerText = "✅ Trade successfully processed.";
-
-    if (res.ok) {
-      let totalRetail = 0;
-      let totalPaidOut = 0;
-      cards.forEach(card => {
-        totalRetail += card.quantity * (card.retail || 0);
-        totalPaidOut += card.quantity * (card.tradeInValue || 0);
-      });
-      const now = new Date().toLocaleString();
-      const logEntry = document.createElement('li');
-      logEntry.textContent = `${employee} – ${payoutMethod} – ${cards.length} item(s) – ${now} – Retail: $${(Number(totalRetail) || 0).toFixed(2)} – Paid: $${totalPaidOut.toFixed(2)}`;
-      document.getElementById('trade-log').appendChild(logEntry);
-    }
-
           statusBar.style.background = "#d4edda";
           statusBar.style.color = "#155724";
           statusBar.style.border = "1px solid #c3e6cb";
@@ -169,24 +151,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
-
-  // Load trade history from server on page load
-  fetch('/api/getTradeLog')
-    .then(res => res.json())
-    .then(logs => {
-      const tradeLog = document.getElementById('trade-log');
-      logs.forEach(entry => {
-        let totalRetail = 0, totalPaid = 0;
-        entry.cards.forEach(c => {
-          totalRetail += (c.quantity || 0) * (c.retail || 0);
-          totalPaid += (c.quantity || 0) * (c.tradeInValue || 0);
-        });
-        const dateStr = new Date(entry.timestamp).toLocaleString();
-        const li = document.createElement('li');
-        li.textContent = `${entry.employee} – ${entry.payoutMethod} – ${entry.cards.length} item(s) – ${dateStr} – Retail: $${(Number(totalRetail) || 0).toFixed(2)} – Paid: $${(Number(totalPaid) || 0).toFixed(2)}`;
-        tradeLog.appendChild(li);
-      });
-    }).catch(err => console.error("Error loading trade log:", err));
 </script>
 
 
