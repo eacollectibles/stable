@@ -100,12 +100,11 @@
       body: JSON.stringify({
         employeeName: document.getElementById('employeeName').value,
         payoutMethod: document.querySelector('input[name="payoutMethod"]:checked')?.value || "Cash",
-        cards: [
-          {
-            cardName: document.querySelector('input[name="cardName"]').value,
-            quantity: parseInt(document.querySelector('input[name="cardQuantity"]').value || "1")
-          }
-        ]
+        cards: Array.from(document.querySelectorAll('.card-row')).map(row => {
+          const cardName = row.querySelector('input[name="cardName"]')?.value || '';
+          const quantity = parseInt(row.querySelector('input[name="cardQuantity"]')?.value || '1');
+          return { cardName, quantity };
+        })
       })
     })
     .then(res => res.json())
