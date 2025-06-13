@@ -164,26 +164,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
+
+
+
 <!-- 📸 Multi-Card Image Upload Section -->
 <h3>📸 Scan Cards from Images</h3>
 <input type="file" id="imageUpload" accept="image/*" multiple />
 <div id="imagePreviewGallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
 
 <script>
-  window.addEventListener("load", function () {
+  document.addEventListener("DOMContentLoaded", function () {
     const uploadInput = document.getElementById("imageUpload");
     const gallery = document.getElementById("imagePreviewGallery");
 
     if (!uploadInput || !gallery) return;
 
-    // Remove previous listeners if any
-    const clone = uploadInput.cloneNode(true);
-    uploadInput.parentNode.replaceChild(clone, uploadInput);
-
-    clone.addEventListener("change", function(event) {
+    uploadInput.addEventListener("change", function(event) {
       gallery.innerHTML = ""; // Clear previous previews
 
+      const seen = new Set();
       Array.from(event.target.files).forEach(file => {
+        if (seen.has(file.name)) return; // Skip duplicates by filename
+        seen.add(file.name);
+
         const reader = new FileReader();
         reader.onload = function(e) {
           const img = document.createElement("img");
