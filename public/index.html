@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <!-- 📸 Multi-Card Image Upload Section -->
 <h3>📸 Scan Cards from Images</h3>
-<input type="file" id="imageUpload" accept="image/*" multiple />
+
 <div id="imagePreviewGallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
 
 <script>
@@ -176,6 +176,38 @@ document.addEventListener("DOMContentLoaded", function () {
       };
       reader.readAsDataURL(file);
     });
+  });
+</script>
+
+
+<!-- 📸 Multi-Card Image Upload Section -->
+<h3>📸 Scan Cards from Images</h3>
+<input type="file" id="imageUpload" accept="image/*" multiple />
+<div id="imagePreviewGallery" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
+
+<script>
+  // Ensure this handler is only attached once
+  document.addEventListener("DOMContentLoaded", function () {
+    const uploadInput = document.getElementById("imageUpload");
+    const gallery = document.getElementById("imagePreviewGallery");
+
+    if (uploadInput) {
+      uploadInput.addEventListener("change", function(event) {
+        gallery.innerHTML = ""; // Clear previous previews
+
+        Array.from(event.target.files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            img.style.maxWidth = "120px";
+            img.style.border = "1px solid #ccc";
+            gallery.appendChild(img);
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+    }
   });
 </script>
 
