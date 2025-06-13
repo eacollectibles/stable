@@ -1,63 +1,36 @@
+import fetch from 'node-fetch';
+
 export default async function handler(req, res) {
-  const query = req.query.q;
-  if (!query) return res.status(400).json({ error: 'Missing search query' });
-
-  const SHOPIFY_API_PASSWORD = process.env.SHOPIFY_API_PASSWORD;
-  const SHOPIFY_STORE = process.env.SHOPIFY_STORE;
-
-  const endpoint = `https://${SHOPIFY_STORE}/admin/api/2024-04/graphql.json`;
-
-  const graphqlQuery = {
-    query: `
-      query {
-        products(first: 5, query: "${query}") {
-          edges {
-            node {
-              id
-              title
-              tags
-              variants(first: 1) {
-                edges {
-                  node {
-                    sku
-                    price
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `
-  };
+  const { q } = req.query;
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
+    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json`, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': SHOPIFY_API_PASSWORD,
-      },
-      body: JSON.stringify(graphqlQuery),
+        'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_API_PASSWORD,
+        'Content-Type': 'application/json'
+      }
     });
 
-    const json = await response.json();
+    const data = await shopifyRes.json();
+    const products = data.products || [];
 
-    const results = json.data.products.edges.map(edge => {
-      const product = edge.node;
-      const variant = product.variants.edges[0]?.node || {};
+    // Fuzzy search logic
+    const matched = products.filter(p =>
+      p.title.toLowerCase().includes(q.toLowerCase()) ||
+      p.variants[0]?.sku?.toLowerCase().includes(q.toLowerCase())
+    ).slice(0, 5); // limit to 5 matches
 
-      return {
-        title: product.title,
-        sku: variant.sku || '',
-        price: variant.price || '',
-        tags: product.tags,
-      };
-    });
+    const results = matched.map(product => ({
+      title: product.title,
+      sku: product.variants[0]?.sku,
+      price: product.variants[0]?.price,
+      image: product.images?.[0]?.src || null
+    }));
 
     res.status(200).json(results);
   } catch (err) {
-    console.error('Shopify GraphQL error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch from Shopify', details: err.message });
+    console.error("Shopify fetch error:", err);
+    res.status(500).json({ error: "Failed to search products" });
   }
 }
