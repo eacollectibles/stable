@@ -111,38 +111,7 @@
     .then(data => {
 
           
-    
     statusBar.textContent = "Trade submitted successfully!";
-    statusBar.style.color = "green";
-
-    if (data.giftCardCode) {
-      const giftMsg = document.createElement('div');
-      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
-      giftMsg.style.marginTop = "10px";
-      giftMsg.style.fontSize = "16px";
-      giftMsg.style.background = "#e0ffe0";
-      giftMsg.style.padding = "10px";
-      giftMsg.style.border = "1px solid #ccc";
-      giftMsg.style.borderRadius = "5px";
-      statusBar.appendChild(giftMsg);
-    }
-
-    const tradeLogBlock = document.createElement('li');
-    logItem.innerHTML = "<strong>Trade Log:</strong><ul style='margin-top:5px;'>";
-
-    if (Array.isArray(data.results)) {
-      data.results.forEach(result => {
-        if (result.error) {
-          tradeLogBlock.innerHTML += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
-        } else {
-          tradeLogBlock.innerHTML += "<li><strong>" + result.cardName + ":</strong> Matched as '" + result.match + "' – Qty: " + result.quantity + ", Value: $" + (result.tradeInValue * result.quantity).toFixed(2) + "</li>";
-        }
-      });
-    }
-
-    tradeLogBlock.innerHTML += "<li><strong>Total Trade Value:</strong> $" + data.total + "</li></ul>";
-    logList.appendChild(tradeLogBlock);
-
     
     console.log("Trade API response:", data);
     if (data.giftCardCode) {
@@ -160,9 +129,9 @@
     
           statusBar.style.color = "green";
 
-          const tradeLogBlock = document.createElement('li');
+          const logItem = document.createElement('li');
           logItem.textContent = "Trade submitted by " + document.getElementById('employeeName').value + " at " + new Date().toLocaleTimeString();
-          logList.appendChild(tradeLogBlock);
+          logList.appendChild(logItem);
         
     })
     .catch(err => {
