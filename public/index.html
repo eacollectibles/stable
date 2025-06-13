@@ -73,30 +73,6 @@
     
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const addCardButton = document.getElementById('add-card');
-  const cardList = document.getElementById('card-list');
-
-  if (addCardButton && cardList) {
-    addCardButton.addEventListener('click', () => {
-      const cardRow = document.createElement('div');
-      cardRow.className = 'card-row';
-      cardRow.style.display = 'flex';
-      cardRow.style.alignItems = 'center';
-      cardRow.style.gap = '10px';
-      cardRow.innerHTML = `
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQuantity" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
-          <option value="NM">NM</option>
-          <option value="LP">LP</option>
-          <option value="MP">MP</option>
-        </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-      `;
-      cardList.appendChild(cardRow);
-    });
-  }
-
   const form = document.getElementById('trade-form');
   const statusBar = document.getElementById('statusBar');
 
@@ -183,30 +159,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const addCardButton = document.getElementById('add-card');
-  const cardList = document.getElementById('card-list');
-
-  if (addCardButton && cardList) {
-    addCardButton.addEventListener('click', () => {
-      const cardRow = document.createElement('div');
-      cardRow.className = 'card-row';
-      cardRow.style.display = 'flex';
-      cardRow.style.alignItems = 'center';
-      cardRow.style.gap = '10px';
-      cardRow.innerHTML = `
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQuantity" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
-          <option value="NM">NM</option>
-          <option value="LP">LP</option>
-          <option value="MP">MP</option>
-        </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-      `;
-      cardList.appendChild(cardRow);
-    });
-  }
-
   const form = document.getElementById('trade-form');
   const statusBar = document.getElementById('statusBar');
 
