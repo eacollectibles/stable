@@ -4,7 +4,11 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { cards, employeeName, payoutMethod } = req.body;
+  
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const estimateMode = url.searchParams.get('estimate') === 'true';
+
+  const { cards, employeeName, payoutMethod, overrideTotal } = req.body;
   if (!cards || !Array.isArray(cards)) {
     return res.status(400).json({ error: 'Invalid or missing cards array' });
   }
@@ -121,6 +125,7 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(200).json({
+    estimate: estimateMode,
     employee: employeeName,
     payoutMethod,
     results,
