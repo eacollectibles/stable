@@ -18,7 +18,7 @@
   </div>
 
   <h2>Trade-In Cards</h2>
-  <form id="trade-form" method="POST">
+  <form id="trade-form">
     <label for="employeeName"><strong>Employee:</strong></label>
     <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
       <option value="" disabled selected>Select Employee</option>
@@ -58,7 +58,10 @@
       Test Trade Input
     </button>
 
-        </form>
+    <button type="submit" style="background-color: green; color: white; font-weight: bold;">
+      Submit Trade
+    </button>
+    </form>
 
     <div id="statusBar" style="margin-top: 20px; font-weight: bold;"></div>
 
@@ -77,8 +80,7 @@
         }
       });
 
-      document.addEventListener("DOMContentLoaded", function () {
-  document.getElementById('trade-form').addEventListener('submit', function (e) {
+      document.getElementById('trade-form').addEventListener('submit', function (e) {
         e.preventDefault();
         if (!confirm("Are you sure you want to submit this trade?")) return;
 
@@ -109,42 +111,7 @@
     .then(data => {
 
           
-    
     statusBar.textContent = "Trade submitted successfully!";
-    statusBar.style.color = "green";
-
-    if (data.giftCardCode) {
-      const giftMsg = document.createElement('div');
-      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
-      giftMsg.style.marginTop = "10px";
-      giftMsg.style.fontSize = "16px";
-      giftMsg.style.background = "#e0ffe0";
-      giftMsg.style.padding = "10px";
-      giftMsg.style.border = "1px solid #ccc";
-      giftMsg.style.borderRadius = "5px";
-      statusBar.appendChild(giftMsg);
-    }
-
-    // Clear and populate trade log
-    const logList = document.getElementById('logList');
-    const logEntry = document.createElement('li');
-    let logHtml = "<strong>Trade Log:</strong><ul style='margin-top:5px;'>";
-
-    if (Array.isArray(data.results)) {
-      data.results.forEach(result => {
-        if (result.error) {
-          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
-        } else {
-          const value = (result.tradeInValue * result.quantity).toFixed(2);
-          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.match + " – Qty: " + result.quantity + ", Retail: $" + (result.retailPrice * result.quantity).toFixed(2) + ", Trade: $" + value + "</li>";
-        }
-      });
-    }
-
-    logHtml += "<li><strong>Total:</strong> $" + data.total + "</li></ul>";
-    logEntry.innerHTML = logHtml;
-    logList.appendChild(logEntry);
-
     
     console.log("Trade API response:", data);
     if (data.giftCardCode) {
@@ -223,7 +190,6 @@ document.addEventListener('DOMContentLoaded', function () {
     cardList.appendChild(newRow);
   });
 
-  document.addEventListener("DOMContentLoaded", function () {
   document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
