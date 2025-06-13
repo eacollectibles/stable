@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
       });
       const now = new Date().toLocaleString();
       const logEntry = document.createElement('li');
-      logEntry.textContent = `${employee} – ${payoutMethod} – ${cards.length} item(s) – ${now} – Retail: $${(Number(totalRetail) || 0).toFixed(2)} – Paid: $${totalPaidOut.toFixed(2)}`;
+      logEntry.textContent = `${employee} – ${payoutMethod} – ${cards.length} item(s) – ${now} – Retail: $${totalRetail.toFixed(2)} – Paid: $${totalPaidOut.toFixed(2)}`;
       document.getElementById('trade-log').appendChild(logEntry);
     }
 
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const dateStr = new Date(entry.timestamp).toLocaleString();
         const li = document.createElement('li');
-        li.textContent = `${entry.employee} – ${entry.payoutMethod} – ${entry.cards.length} item(s) – ${dateStr} – Retail: $${(Number(totalRetail) || 0).toFixed(2)} – Paid: $${(Number(totalPaid) || 0).toFixed(2)}`;
+        li.textContent = `${entry.employee} – ${entry.payoutMethod} – ${entry.cards.length} item(s) – ${dateStr} – Retail: $${totalRetail.toFixed(2)} – Paid: $${totalPaid.toFixed(2)}`;
         tradeLog.appendChild(li);
       });
     }).catch(err => console.error("Error loading trade log:", err));
