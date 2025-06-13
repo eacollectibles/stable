@@ -71,68 +71,6 @@
     </div>
 
     <script>
-
-document.getElementById('trade-form').addEventListener('submit', function (e) {
-  e.preventDefault();
-  if (!confirm("Are you sure you want to submit this trade?")) return;
-
-  const statusBar = document.getElementById('statusBar');
-  const logList = document.getElementById('logList');
-  statusBar.textContent = "Processing...";
-  statusBar.style.color = "blue";
-
-  const cardRows = Array.from(document.querySelectorAll('.card-row'));
-  const cards = [];
-
-  cardRows.forEach(row => {
-    const cardNameInput = row.querySelector('input[name="cardName"]');
-    const quantityInput = row.querySelector('input[name="cardQuantity"]');
-    const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
-
-    if (cardName.length > 0 && quantity > 0) {
-      cards.push({ cardName, quantity });
-    }
-  });
-
-  console.log("Submitting cards array:", cards);
-
-  const employeeName = document.getElementById('employeeName')?.value || '';
-  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
-  fetch("/api/buybackstep4", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeName, payoutMethod, cards })
-  })
-  .then(res => res.json())
-  .then(data => {
-    statusBar.textContent = "Trade submitted successfully!";
-    statusBar.style.color = "green";
-
-    if (data.giftCardCode) {
-      const giftMsg = document.createElement('div');
-      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
-      giftMsg.style.marginTop = "10px";
-      giftMsg.style.fontSize = "16px";
-      giftMsg.style.background = "#e0ffe0";
-      giftMsg.style.padding = "10px";
-      giftMsg.style.border = "1px solid #ccc";
-      giftMsg.style.borderRadius = "5px";
-      statusBar.appendChild(giftMsg);
-    }
-
-    const logItem = document.createElement('li');
-    logItem.textContent = "Trade submitted by " + employeeName + " at " + new Date().toLocaleTimeString();
-    logList.appendChild(logItem);
-  })
-  .catch(err => {
-    console.error("Error submitting trade:", err);
-    statusBar.textContent = "Error submitting trade.";
-    statusBar.style.color = "red";
-  });
-});
-
       document.getElementById('testButton').addEventListener('click', function () {
         const name = document.getElementById('employeeName').value;
         if (!name) {
@@ -231,68 +169,6 @@ document.getElementById('trade-form').addEventListener('submit', function (e) {
   
 
 <script>
-
-document.getElementById('trade-form').addEventListener('submit', function (e) {
-  e.preventDefault();
-  if (!confirm("Are you sure you want to submit this trade?")) return;
-
-  const statusBar = document.getElementById('statusBar');
-  const logList = document.getElementById('logList');
-  statusBar.textContent = "Processing...";
-  statusBar.style.color = "blue";
-
-  const cardRows = Array.from(document.querySelectorAll('.card-row'));
-  const cards = [];
-
-  cardRows.forEach(row => {
-    const cardNameInput = row.querySelector('input[name="cardName"]');
-    const quantityInput = row.querySelector('input[name="cardQuantity"]');
-    const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
-
-    if (cardName.length > 0 && quantity > 0) {
-      cards.push({ cardName, quantity });
-    }
-  });
-
-  console.log("Submitting cards array:", cards);
-
-  const employeeName = document.getElementById('employeeName')?.value || '';
-  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
-  fetch("/api/buybackstep4", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeName, payoutMethod, cards })
-  })
-  .then(res => res.json())
-  .then(data => {
-    statusBar.textContent = "Trade submitted successfully!";
-    statusBar.style.color = "green";
-
-    if (data.giftCardCode) {
-      const giftMsg = document.createElement('div');
-      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
-      giftMsg.style.marginTop = "10px";
-      giftMsg.style.fontSize = "16px";
-      giftMsg.style.background = "#e0ffe0";
-      giftMsg.style.padding = "10px";
-      giftMsg.style.border = "1px solid #ccc";
-      giftMsg.style.borderRadius = "5px";
-      statusBar.appendChild(giftMsg);
-    }
-
-    const logItem = document.createElement('li');
-    logItem.textContent = "Trade submitted by " + employeeName + " at " + new Date().toLocaleTimeString();
-    logList.appendChild(logItem);
-  })
-  .catch(err => {
-    console.error("Error submitting trade:", err);
-    statusBar.textContent = "Error submitting trade.";
-    statusBar.style.color = "red";
-  });
-});
-
 document.addEventListener('DOMContentLoaded', function () {
   const cardList = document.getElementById('card-list');
   const tradeLog = document.getElementById('log-entries');
