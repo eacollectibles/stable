@@ -96,13 +96,11 @@ const fetchVariantBySKU = async (sku) => {
 
         const matchedVariant = await fetchVariantBySKU(sku || cardName);
         if (matchedVariant) {
-          const variantPrice = parseFloat(matchedVariant.price || 0);
-          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
+      const itemValue = parseFloat(matchedVariant.compareAtPriceV2?.amount || matchedVariant.priceV2?.amount || 0);
+      const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
-            tradeInValue,
             quantity
           });
           continue;
@@ -110,7 +108,6 @@ const fetchVariantBySKU = async (sku) => {
           results.push({
             cardName,
             match: null,
-            tradeInValue: 0,
             quantity
           });
           continue;
@@ -120,14 +117,10 @@ const fetchVariantBySKU = async (sku) => {
       // Fallback to first product variant
       const match = productData.products[0];
       const variant = match.variants[0];
-      const variantPrice = parseFloat(variant.price || 0);
-      const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-      totalValue += tradeInValue * quantity;
 
       results.push({
         cardName,
         match: match.title,
-        tradeInValue,
         quantity
       });
     }
