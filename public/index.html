@@ -111,7 +111,42 @@
     .then(data => {
 
           
+    
     statusBar.textContent = "Trade submitted successfully!";
+    statusBar.style.color = "green";
+
+    if (data.giftCardCode) {
+      const giftMsg = document.createElement('div');
+      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
+      giftMsg.style.marginTop = "10px";
+      giftMsg.style.fontSize = "16px";
+      giftMsg.style.background = "#e0ffe0";
+      giftMsg.style.padding = "10px";
+      giftMsg.style.border = "1px solid #ccc";
+      giftMsg.style.borderRadius = "5px";
+      statusBar.appendChild(giftMsg);
+    }
+
+    // Clear and populate trade log
+    const logList = document.getElementById('logList');
+    const logEntry = document.createElement('li');
+    let logHtml = "<strong>Trade Log:</strong><ul style='margin-top:5px;'>";
+
+    if (Array.isArray(data.results)) {
+      data.results.forEach(result => {
+        if (result.error) {
+          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
+        } else {
+          const value = (result.tradeInValue * result.quantity).toFixed(2);
+          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.match + " – Qty: " + result.quantity + ", Value: $" + value + "</li>";
+        }
+      });
+    }
+
+    logHtml += "<li><strong>Total:</strong> $" + data.total + "</li></ul>";
+    logEntry.innerHTML = logHtml;
+    logList.appendChild(logEntry);
+
     
     console.log("Trade API response:", data);
     if (data.giftCardCode) {
