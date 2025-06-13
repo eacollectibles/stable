@@ -97,11 +97,13 @@ const fetchVariantBySKU = async (sku) => {
         const matchedVariant = await fetchVariantBySKU(sku || cardName);
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
-          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
+          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
           totalValue += tradeInValue * quantity;
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
+            itemValue,
             tradeInValue,
             quantity
           });
@@ -109,11 +111,13 @@ const fetchVariantBySKU = async (sku) => {
         }
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
-          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
+          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
           totalValue += tradeInValue * quantity;
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
+            itemValue,
             tradeInValue,
             quantity
           });
@@ -133,13 +137,15 @@ const fetchVariantBySKU = async (sku) => {
       const match = productData.products[0];
       const variant = match.variants[0];
       const variantPrice = parseFloat(variant.price || 0);
-      const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+      const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
+          const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
       totalValue += tradeInValue * quantity;
 
       results.push({
         cardName,
         match: match.title,
-        tradeInValue,
+        itemValue,
+            tradeInValue,
         quantity
       });
     }
