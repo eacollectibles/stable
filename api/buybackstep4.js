@@ -45,11 +45,7 @@ module.exports = async function handler(req, res) {
 
     results.push({
       cardName,
-      
-      tradeInValue,
-      quantity,
-      retailPrice: parseFloat(variant.price || 0),
-      
+      match: productData.products[0].title,
       tradeInValue,
       quantity,
     });
