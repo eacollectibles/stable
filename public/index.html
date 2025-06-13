@@ -36,8 +36,8 @@
 
     <div id="card-list">
       <div class="card-row" style="display: flex; align-items: center; gap: 10px;">
-        <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
+        <input type="text" name="cardName" name="cardName" placeholder="Card Name" required />
+        <input type="number" name="cardQuantity" name="cardQty" placeholder="Qty" min="1" value="1" required />
         <select name="cardCondition" required>
           <option value="NM">NM</option>
           <option value="LP">LP</option>
@@ -100,10 +100,24 @@
       body: JSON.stringify({
         employeeName: document.getElementById('employeeName').value,
         payoutMethod: document.querySelector('input[name="payoutMethod"]:checked')?.value || "Cash",
-        cards: Array.from(document.querySelectorAll('.card-row')).map(row => {
+        
+    const cardRows = Array.from(document.querySelectorAll('.card-row'));
+    if (cardRows.length === 0) {
+      console.error("No card rows found.");
+    }
+
+    const cards = cardRows.map(row => {
+      const cardName = row.querySelector('input[name="cardName"]')?.value?.trim() || '';
+      const quantity = parseInt(row.querySelector('input[name="cardQuantity"]')?.value || '1', 10);
+
+      return { cardName, quantity };
+    }).filter(card => card.cardName.length > 0 && quantity > 0);
+
+    console.log("Submitting cards array:", cards);
+
           const cardName = row.querySelector('input[name="cardName"]')?.value || '';
           const quantity = parseInt(row.querySelector('input[name="cardQuantity"]')?.value || '1');
-          return { cardName, quantity };
+          console.log("Extracted card:", cardName, quantity); return { cardName, quantity };
         })
       })
     })
@@ -112,9 +126,12 @@
 
           
     statusBar.textContent = "Trade submitted successfully!";
+    
+    console.log("Trade API response:", data);
     if (data.giftCardCode) {
+    
       const giftMsg = document.createElement('div');
-      giftMsg.innerHTML = `<strong>🎁 Gift Card Issued:</strong> <code>${data.giftCardCode}</code>`;
+      giftMsg.innerHTML = "<strong>🎁 Gift Card Issued:</strong> <code>" + data.giftCardCode + "</code>";
       giftMsg.style.marginTop = "10px";
       giftMsg.style.fontSize = "16px";
       giftMsg.style.background = "#e0ffe0";
@@ -175,8 +192,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const newRow = document.createElement('div');
     newRow.className = 'card-row';
     newRow.innerHTML = `
-      <input type="text" name="cardName" placeholder="Card Name" required />
-      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
+      <input type="text" name="cardName" name="cardName" placeholder="Card Name" required />
+      <input type="number" name="cardQuantity" name="cardQty" placeholder="Qty" min="1" value="1" required />
       <select name="cardCondition" required>
         <option value="NM">NM</option>
         <option value="LP">LP</option>
