@@ -54,22 +54,11 @@
       <input type="file" id="cardImage" name="cardImage" accept="image/*" onchange="previewImage(event)" style="display: block; margin-top: 5px;" />
     <div id="imagePreviewContainer" style="margin-top: 10px;"><img id="imagePreview" src="" style="max-width: 200px; display: none; border: 1px solid #ccc;" /></div>
 
-    <button type="button" id="testButton" style="background-color: orange; color: white; font-weight: bold;">
-      Test Trade Input
-    </button>
-
-    <button type="submit" style="background-color: green; color: white; font-weight: bold;">
-      Submit Trade
-    </button>
-    </form>
+            </form>
 
     <div id="statusBar" style="margin-top: 20px; font-weight: bold;"></div>
 
-    <div id="tradeLog" style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
-      <h3>Trade Log</h3>
-      <ul id="logList" style="list-style-type: disc; padding-left: 20px;"></ul>
-    </div>
-
+    
     <script>
       document.getElementById('testButton').addEventListener('click', function () {
         const name = document.getElementById('employeeName').value;
@@ -112,6 +101,7 @@
 
           
     statusBar.textContent = "Trade submitted successfully!";
+statusBar.style.color = "green";
     
     console.log("Trade API response:", data);
     if (data.giftCardCode) {
@@ -136,6 +126,7 @@
     })
     .catch(err => {
       statusBar.textContent = "Error submitting trade.";
+statusBar.style.color = "red";
       statusBar.style.color = "red";
     });
     
