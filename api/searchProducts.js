@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   `;
 
   try {
-    const response = await fetch('https://ea-collectibles.myshopify.com/admin/api/2023-01/graphql.json', {
+    const response = await fetch('https://your-shop-name.myshopify.com/admin/api/2023-01/graphql.json', {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_API_PASSWORD,
@@ -53,13 +53,13 @@ export default async function handler(req, res) {
 
       for (const variantEdge of variants) {
         const variant = variantEdge.node;
-        if (variant.sku?.toLowerCase() === q.toLowerCase()) {
+        if (variant.barcode?.toLowerCase() === q.toLowerCase()) {
           matched.push({
             title: product.title,
             sku: variant.sku,
             price: variant.price,
             image: product.images?.edges?.[0]?.node?.originalSrc || placeholder,
-            debug: "Matched via GraphQL"
+            debug: "Matched via GraphQL (barcode)"
           });
         }
       }
