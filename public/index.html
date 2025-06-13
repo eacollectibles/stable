@@ -112,12 +112,29 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .then(res => res.json())
     .then(data => {
+      
       statusBar.textContent = "Trade submitted successfully!";
       statusBar.style.color = "green";
 
-      if (data.giftCardCode) {
-        statusBar.textContent += " 🎁 Gift Card Code: " + data.giftCardCode;
+      let retailTotal = 0;
+      if (Array.isArray(data.results)) {
+        data.results.forEach(result => {
+          if (result.retailPrice && result.quantity) {
+            retailTotal += result.retailPrice * result.quantity;
+          }
+        });
       }
+
+      statusBar.textContent += "
+Retail Total: $" + retailTotal.toFixed(2);
+      statusBar.textContent += "
+Trade Payout: $" + data.total;
+
+      if (data.giftCardCode) {
+        statusBar.textContent += "
+🎁 Gift Card Code: " + data.giftCardCode;
+      }
+    
     })
     .catch(err => {
       console.error("Error submitting trade:", err);
@@ -184,12 +201,29 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .then(res => res.json())
     .then(data => {
+      
       statusBar.textContent = "Trade submitted successfully!";
       statusBar.style.color = "green";
 
-      if (data.giftCardCode) {
-        statusBar.textContent += " 🎁 Gift Card Code: " + data.giftCardCode;
+      let retailTotal = 0;
+      if (Array.isArray(data.results)) {
+        data.results.forEach(result => {
+          if (result.retailPrice && result.quantity) {
+            retailTotal += result.retailPrice * result.quantity;
+          }
+        });
       }
+
+      statusBar.textContent += "
+Retail Total: $" + retailTotal.toFixed(2);
+      statusBar.textContent += "
+Trade Payout: $" + data.total;
+
+      if (data.giftCardCode) {
+        statusBar.textContent += "
+🎁 Gift Card Code: " + data.giftCardCode;
+      }
+    
     })
     .catch(err => {
       console.error("Error submitting trade:", err);
