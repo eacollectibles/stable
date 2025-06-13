@@ -15,6 +15,8 @@ module.exports = async function handler(req, res) {
     const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
     const ACCESS_TOKEN = "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";
 
+    
+    
     const fetchVariantBySKU = async (sku) => {
       const query = `
         {
@@ -24,25 +26,12 @@ module.exports = async function handler(req, res) {
                 id
                 title
                 sku
-                V2 {
+                priceV2 {
                   amount
                 }
-                V2 {
+                compareAtPriceV2 {
                   amount
                 }
-                inventoryQuantity
-                product {
-                  title
-                }
-              }
-            }
-            edges {
-              node {
-                id
-                title
-                sku
-                
-                
                 inventoryQuantity
                 product {
                   title
@@ -53,7 +42,7 @@ module.exports = async function handler(req, res) {
         }
       `;
 
-      const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+      const graphqlRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': ACCESS_TOKEN,
@@ -63,8 +52,45 @@ module.exports = async function handler(req, res) {
       });
 
       const json = await graphqlRes.json();
-      return json?.data?.productVariants?.edges?.[0]?.node || null;
+      const matched = json?.data?.productVariants?.edges?.[0]?.node;
+
+      if (matched) return matched;
+
+      // Fallback: try REST Admin API search by product title
+      const restRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(sku)}\`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const restText = await restRes.text();
+      let productData;
+      try {
+        productData = JSON.parse(restText);
+      } catch (err) {
+        console.error("Failed to parse REST product JSON:", restText);
+        return null;
+      }
+
+      const product = productData.products?.[0];
+      if (!product || !product.variants?.[0]) return null;
+
+      const variant = product.variants[0];
+      return {
+        title: variant.title,
+        sku: variant.sku,
+        priceV2: { amount: variant.price },
+        compareAtPriceV2: variant.compare_at_price ? { amount: variant.compare_at_price } : null,
+        inventoryQuantity: variant.inventory_quantity,
+        product: {
+          title: product.title
+        }
+      };
     };
+
+
 
     let totalValue = 0;
     const results = [];
@@ -74,7 +100,7 @@ module.exports = async function handler(req, res) {
       const matchedVariant = await fetchVariantBySKU(sku || cardName);
 
       if (matchedVariant) {
-        const itemValue = parseFloat(matchedVariant.V2?.amount || matchedVariant.V2?.amount || 0);
+        const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
         const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
         totalValue += tradeInValue * quantity;
 
