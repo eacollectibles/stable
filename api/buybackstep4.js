@@ -24,8 +24,25 @@ module.exports = async function handler(req, res) {
                 id
                 title
                 sku
-                price
-                compareAtPrice
+                V2 {
+                  amount
+                }
+                V2 {
+                  amount
+                }
+                inventoryQuantity
+                product {
+                  title
+                }
+              }
+            }
+            edges {
+              node {
+                id
+                title
+                sku
+                
+                
                 inventoryQuantity
                 product {
                   title
@@ -57,7 +74,7 @@ module.exports = async function handler(req, res) {
       const matchedVariant = await fetchVariantBySKU(sku || cardName);
 
       if (matchedVariant) {
-        const itemValue = parseFloat(matchedVariant.compareAtPriceV2?.amount || matchedVariant.priceV2?.amount || 0);
+        const itemValue = parseFloat(matchedVariant.V2?.amount || matchedVariant.V2?.amount || 0);
         const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
         totalValue += tradeInValue * quantity;
 
