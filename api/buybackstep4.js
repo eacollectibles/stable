@@ -94,14 +94,12 @@ const fetchVariantBySKU = async (sku) => {
           return res.status(500).json({ error: 'Failed to parse variants data', details: parseErr.message });
         }
 
-        const matchedVariant = await fetchVariantBySKU(sku || cardName);
+      let matchedVariant = await fetchVariantBySKU(sku || cardName);
       console.log('Matched Variant:', JSON.stringify(matchedVariant));
         if (matchedVariant) {
-      const matchedVariant = await fetchVariantBySKU(sku || cardName);
       if (!matchedVariant) {
         console.log('No matched variant found. Skipping.');
         continue;
-      }
       const normalizedVariant = {
         price: matchedVariant.price || matchedVariant.priceV2?.amount || 0,
         compare_at_price: matchedVariant.compare_at_price || matchedVariant.compareAtPriceV2?.amount || null,
