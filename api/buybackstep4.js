@@ -95,12 +95,20 @@ const fetchVariantBySKU = async (sku) => {
         }
 
         const matchedVariant = await fetchVariantBySKU(sku || cardName);
+      console.log('Matched Variant:', JSON.stringify(matchedVariant));
         if (matchedVariant) {
-      const itemValue = parseFloat(matchedVariant.compareAtPriceV2?.amount || matchedVariant.priceV2?.amount || 0);
+      const normalizedVariant = {
+        price: matchedVariant.price || matchedVariant.priceV2?.amount || 0,
+        compare_at_price: matchedVariant.compare_at_price || matchedVariant.compareAtPriceV2?.amount || null,
+        title: matchedVariant.title || matchedVariant.product?.title || 'Unknown',
+        sku: normalizedVariant.sku || '',
+        inventory_quantity: matchedVariant.inventory_quantity || matchedVariant.inventoryQuantity || 0
+      };
+      const itemValue = parseFloat(normalizedVariant.compare_at_price || normalizedVariant.price || 0);
       const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
       results.push({
         cardName,
-        match: matchedVariant.product.title,
+        match: normalizedVariant.title,
         itemValue,
         tradeInValue,
         quantity
@@ -145,6 +153,7 @@ const fetchVariantBySKU = async (sku) => {
     }
 
     res.status(200).json({
+      matchedVariant,
       giftCardCode,
       estimate: estimateMode,
       employeeName,
