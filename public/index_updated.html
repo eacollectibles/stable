@@ -35,7 +35,7 @@
 </fieldset>
 
     <div id="card-list">
-      <div class="card-row" style="display: flex; align-items: center; gap: 10px;">
+      <div class="card-row">
         <input type="text" name="cardName" placeholder="Card Name" required />
         <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
         <select name="cardCondition" required>
@@ -51,8 +51,8 @@
   
     <div id="card-image-upload" style="margin-top: 10px;">
       <label for="cardImage"><strong>Upload Card Image (optional):</strong></label>
-      <input type="file" id="cardImage" name="cardImage" accept="image/*" onchange="previewImage(event)" style="display: block; margin-top: 5px;" />
-    <div id="imagePreviewContainer" style="margin-top: 10px;"><img id="imagePreview" src="" style="max-width: 200px; display: none; border: 1px solid #ccc;" /></div>
+      <input type="file" id="cardImage" name="cardImage" accept="image/*" style="display: block; margin-top: 5px;" />
+    </div>
 
     <button type="button" id="testButton" style="background-color: orange; color: white; font-weight: bold;">
       Test Trade Input
@@ -100,21 +100,7 @@
           logList.appendChild(logItem);
         }, 1000);
       });
-    
-      function previewImage(event) {
-        const file = event.target.files[0];
-        const preview = document.getElementById('imagePreview');
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-          }
-          reader.readAsDataURL(file);
-        }
-      }
     </script>
-    
     
 
   
@@ -218,21 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
-
-      function previewImage(event) {
-        const file = event.target.files[0];
-        const preview = document.getElementById('imagePreview');
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = function(e) {
-            preview.src = e.target.result;
-            preview.style.display = 'block';
-          }
-          reader.readAsDataURL(file);
-        }
-      }
-    </script>
-    
+</script>
 
 
 </body>
