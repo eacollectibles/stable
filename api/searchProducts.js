@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   const { q } = req.query;
 
   try {
-    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json`, {
+    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json?fields=id,title,variants,images`, {
       method: 'GET',
       headers: {
         'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_API_PASSWORD,
