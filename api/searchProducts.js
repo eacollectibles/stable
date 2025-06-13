@@ -1,36 +1,58 @@
 import fetch from 'node-fetch';
 
-export default async function handler(req, res) {
-  const { q } = req.query;
+const getAllProducts = async () => {
+  const allProducts = [];
+  let url = 'https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json?limit=250';
+  let hasNextPage = true;
 
-  try {
-    const shopifyRes = await fetch(`https://your-shopify-store.myshopify.com/admin/api/2023-01/products.json?limit=250`, {
-      method: 'GET',
+  while (hasNextPage) {
+    const response = await fetch(url, {
       headers: {
         'X-Shopify-Access-Token': process.env.SHOPIFY_ADMIN_API_PASSWORD,
         'Content-Type': 'application/json'
       }
     });
 
-    const data = await shopifyRes.json();
-    const products = data.products || [];
+    if (!response.ok) throw new Error("Failed to fetch products");
 
+    const data = await response.json();
+    allProducts.push(...(data.products || []));
+
+    const linkHeader = response.headers.get("link");
+    if (linkHeader && linkHeader.includes('rel="next"')) {
+      const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      url = match ? match[1] : null;
+      hasNextPage = !!url;
+    } else {
+      hasNextPage = false;
+    }
+  }
+
+  return allProducts;
+};
+
+export default async function handler(req, res) {
+  const { q } = req.query;
+
+  try {
+    const products = await getAllProducts();
     const placeholder = "https://via.placeholder.com/60x60.png?text=No+Image";
-    const debugSkus = [];
 
     const matched = [];
+    const allSkus = [];
 
     for (const product of products) {
       for (const variant of product.variants) {
-        debugSkus.push(variant.sku || "(no sku)");
+        const sku = variant.sku || "";
+        allSkus.push(sku);
 
-        if (variant.sku?.toLowerCase().includes(q.toLowerCase())) {
+        if (sku.toLowerCase().includes(q.toLowerCase())) {
           matched.push({
             title: product.title,
-            sku: variant.sku,
+            sku: sku,
             price: variant.price,
             image: product.images?.[0]?.src || placeholder,
-            debug: `Matched SKU: ${variant.sku}`
+            debug: `Matched SKU: ${sku}`
           });
           break;
         }
@@ -45,11 +67,13 @@ export default async function handler(req, res) {
           debug: `Matched Title: ${product.title}`
         });
       }
+
+      if (matched.length >= 5) break;
     }
 
-    res.status(200).json({ matched: matched.slice(0, 5), debugSkus });
+    res.status(200).json({ matched, allSkus });
   } catch (err) {
     console.error("Shopify fetch error:", err);
-    res.status(500).json({ error: "Failed to search products" });
+    res.status(500).json({ error: "Failed to search all products" });
   }
 }
