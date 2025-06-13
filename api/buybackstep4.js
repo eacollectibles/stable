@@ -98,18 +98,15 @@ const fetchVariantBySKU = async (sku) => {
         if (matchedVariant) {
       const itemValue = parseFloat(matchedVariant.compareAtPriceV2?.amount || matchedVariant.priceV2?.amount || 0);
       const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
-          results.push({
-            cardName: matchedVariant.title,
-            match: matchedVariant.title,
-            quantity
-          });
+      results.push({
+        cardName,
+        match: matchedVariant.product.title,
+        itemValue,
+        tradeInValue,
+        quantity
+      });
           continue;
         } else {
-          results.push({
-            cardName,
-            match: null,
-            quantity
-          });
           continue;
         }
       }
@@ -118,11 +115,6 @@ const fetchVariantBySKU = async (sku) => {
       const match = productData.products[0];
       const variant = match.variants[0];
 
-      results.push({
-        cardName,
-        match: match.title,
-        quantity
-      });
     }
 
     const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
