@@ -15,7 +15,42 @@ module.exports = async function handler(req, res) {
     const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
     const ACCESS_TOKEN = "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";
 
-    let totalValue = 0;
+    
+const fetchVariantBySKU = async (sku) => {
+  const query = `
+    {
+      productVariants(first: 1, query: "sku:${sku}") {
+        edges {
+          node {
+            id
+            title
+            sku
+            price
+            inventoryQuantity
+            product {
+              title
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': ACCESS_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query })
+  });
+
+  const json = await graphqlRes.json();
+  const variantEdge = json?.data?.productVariants?.edges?.[0];
+  return variantEdge?.node || null;
+};
+
+  let totalValue = 0;
     const results = [];
 
     for (const card of cards) {
@@ -59,7 +94,7 @@ module.exports = async function handler(req, res) {
           return res.status(500).json({ error: 'Failed to parse variants data', details: parseErr.message });
         }
 
-        const matchedVariant = variantsData.variants.find(v => v.sku === (sku || cardName));
+        const matchedVariant = await fetchVariantBySKU(sku || cardName);
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
           const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
