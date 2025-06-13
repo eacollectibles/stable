@@ -216,7 +216,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const originalSubmitTrade = window.submitTrade || function () {};
     window.submitTrade = function () {
       const overrideValue = document.getElementById('overrideTotal').value;
-      const formData = collectFormData(); // Assumes this function exists
+      const formData = collectFormData();
+      formData.cards = formData.cards.map(card => ({
+        ...card,
+        sku: card.cardName
+      })); // Assumes this function exists
       if (overrideValue) {
         formData.overrideTotal = parseFloat(overrideValue);
       }
