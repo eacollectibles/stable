@@ -116,7 +116,11 @@ document.addEventListener("DOMContentLoaded", function () {
       let retailTotal = 0;
 
       if (Array.isArray(data.results)) {
+        document.getElementById("tradeLog").innerHTML = "";  // Clear previous log
         data.results.forEach(result => {
+          const logEntry = document.createElement("div");
+          logEntry.textContent = `${result.cardName} — $${parseFloat(result.retailPrice).toFixed(2)} × ${result.quantity}`;
+          document.getElementById("tradeLog").appendChild(logEntry);
           if (result.retailPrice && result.quantity) {
             retailTotal += result.retailPrice * result.quantity;
           }
