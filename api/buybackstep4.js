@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
       const matchedVariant = await fetchVariantBySKU(sku || cardName);
 
       if (matchedVariant) {
-        const itemValue = parseFloat(matchedVariant.compareAtPrice || matchedVariant.price || 0);
+        const itemValue = parseFloat(matchedVariant.compareAtPriceV2?.amount || matchedVariant.priceV2?.amount || 0);
         const tradeInValue = parseFloat((itemValue * 0.3).toFixed(2));
         totalValue += tradeInValue * quantity;
 
