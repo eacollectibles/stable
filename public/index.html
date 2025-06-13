@@ -58,10 +58,7 @@
       Test Trade Input
     </button>
 
-    <button type="submit" style="background-color: green; color: white; font-weight: bold;">
-      Submit Trade
-    </button>
-    </form>
+        </form>
 
     <div id="statusBar" style="margin-top: 20px; font-weight: bold;"></div>
 
@@ -80,7 +77,8 @@
         }
       });
 
-      document.getElementById('trade-form').addEventListener('submit', function (e) {
+      document.addEventListener("DOMContentLoaded", function () {
+  document.getElementById('trade-form').addEventListener('submit', function (e) {
         e.preventDefault();
         if (!confirm("Are you sure you want to submit this trade?")) return;
 
@@ -138,7 +136,7 @@
           logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
         } else {
           const value = (result.tradeInValue * result.quantity).toFixed(2);
-          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.match + " – Qty: " + result.quantity + ", Value: $" + value + "</li>";
+          logHtml += "<li><strong>" + result.cardName + ":</strong> " + result.match + " – Qty: " + result.quantity + ", Retail: $" + (result.retailPrice * result.quantity).toFixed(2) + ", Trade: $" + value + "</li>";
         }
       });
     }
@@ -225,6 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
     cardList.appendChild(newRow);
   });
 
+  document.addEventListener("DOMContentLoaded", function () {
   document.getElementById('trade-form').addEventListener('submit', function (e) {
     e.preventDefault();
 
