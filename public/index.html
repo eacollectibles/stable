@@ -120,7 +120,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      status += " | Retail Total: $" + retailTotal.toFixed(2);
+      status += " | Items Value: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -178,7 +178,7 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
       });
     }
 
-    status += " | Retail Total: $" + retailTotal.toFixed(2);
+    status += " | Items Value: $" + retailTotal.toFixed(2);
     status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
 
     statusBar.textContent = status;
@@ -287,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      status += " | Retail Total: $" + retailTotal.toFixed(2);
+      status += " | Items Value: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -345,7 +345,7 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
       });
     }
 
-    status += " | Retail Total: $" + retailTotal.toFixed(2);
+    status += " | Items Value: $" + retailTotal.toFixed(2);
     status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
 
     statusBar.textContent = status;
