@@ -157,11 +157,37 @@ document.addEventListener("DOMContentLoaded", function () {
   
 
 
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById('trade-form');
   const statusBar = document.getElementById('statusBar');
+  const addCardButton = document.getElementById('add-card');
+  const cardList = document.getElementById('card-list');
 
+  // Fix Add Card logic
+  if (addCardButton && cardList) {
+    addCardButton.addEventListener('click', () => {
+      const cardRow = document.createElement('div');
+      cardRow.className = 'card-row';
+      cardRow.style.display = 'flex';
+      cardRow.style.alignItems = 'center';
+      cardRow.style.gap = '10px';
+      cardRow.innerHTML = `
+        <input type="text" name="cardName" placeholder="Card Name" required />
+        <input type="number" name="cardQuantity" placeholder="Qty" min="1" value="1" required />
+        <select name="cardCondition" required>
+          <option value="NM">NM</option>
+          <option value="LP">LP</option>
+          <option value="MP">MP</option>
+        </select>
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+      `;
+      cardList.appendChild(cardRow);
+    });
+  }
+
+  // Submit handler
   if (!form || !statusBar) {
     console.error("Form or status bar not found.");
     return;
@@ -198,13 +224,14 @@ document.addEventListener("DOMContentLoaded", function () {
     })
     .then(res => res.json())
     .then(data => {
+      console.log("API response:", data.results);
       let status = "Trade submitted successfully!";
       let retailTotal = 0;
 
       if (Array.isArray(data.results)) {
         data.results.forEach(result => {
           if (result.retailPrice && result.quantity) {
-            retailTotal += result.retailPrice * result.quantity;
+            retailTotal += parseFloat(result.retailPrice) * result.quantity;
           }
         });
       }
@@ -227,9 +254,6 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
-
-    
-
 
 </body>
 </html>
