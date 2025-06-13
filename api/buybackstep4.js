@@ -106,6 +106,18 @@ const fetchVariantBySKU = async (sku) => {
             quantity
           });
           continue;
+        }
+        if (matchedVariant) {
+          const variantPrice = parseFloat(matchedVariant.price || 0);
+          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          totalValue += tradeInValue * quantity;
+          results.push({
+            cardName: matchedVariant.title,
+            match: matchedVariant.title,
+            tradeInValue,
+            quantity
+          });
+          continue;
         } else {
           results.push({
             cardName,
@@ -134,7 +146,33 @@ const fetchVariantBySKU = async (sku) => {
 
     const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
 
-    res.status(200).json({
+    
+  let giftCardCode = null;
+  if (payoutMethod === "store-credit") {
+    try {
+      const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": ACCESS_TOKEN,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          gift_card: {
+            initial_value: finalPayout.toFixed(2),
+            note: `Buyback payout for ${employeeName || "Unknown"}`,
+            currency: "CAD"
+          }
+        })
+      });
+      const giftCardData = await giftCardRes.json();
+      giftCardCode = giftCardData?.gift_card?.code || null;
+    } catch (err) {
+      console.error("Gift card creation failed:", err);
+    }
+  }
+
+  res.status(200).json({
+      giftCardCode,
       estimate: estimateMode,
       employeeName,
       payoutMethod,
