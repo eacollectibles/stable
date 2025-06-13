@@ -127,21 +127,21 @@
       statusBar.appendChild(giftMsg);
     }
 
-    const logItem = document.createElement('li');
+    const tradeLogBlock = document.createElement('li');
     logItem.innerHTML = "<strong>Trade Log:</strong><ul style='margin-top:5px;'>";
 
     if (Array.isArray(data.results)) {
       data.results.forEach(result => {
         if (result.error) {
-          logItem.innerHTML += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
+          tradeLogBlock.innerHTML += "<li><strong>" + result.cardName + ":</strong> " + result.error + "</li>";
         } else {
-          logItem.innerHTML += "<li><strong>" + result.cardName + ":</strong> Matched as '" + result.match + "' – Qty: " + result.quantity + ", Value: $" + (result.tradeInValue * result.quantity).toFixed(2) + "</li>";
+          tradeLogBlock.innerHTML += "<li><strong>" + result.cardName + ":</strong> Matched as '" + result.match + "' – Qty: " + result.quantity + ", Value: $" + (result.tradeInValue * result.quantity).toFixed(2) + "</li>";
         }
       });
     }
 
-    logItem.innerHTML += "<li><strong>Total Trade Value:</strong> $" + data.total + "</li></ul>";
-    logList.appendChild(logItem);
+    tradeLogBlock.innerHTML += "<li><strong>Total Trade Value:</strong> $" + data.total + "</li></ul>";
+    logList.appendChild(tradeLogBlock);
 
     
     console.log("Trade API response:", data);
@@ -160,9 +160,9 @@
     
           statusBar.style.color = "green";
 
-          const logItem = document.createElement('li');
+          const tradeLogBlock = document.createElement('li');
           logItem.textContent = "Trade submitted by " + document.getElementById('employeeName').value + " at " + new Date().toLocaleTimeString();
-          logList.appendChild(logItem);
+          logList.appendChild(tradeLogBlock);
         
     })
     .catch(err => {
