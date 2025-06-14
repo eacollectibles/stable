@@ -1,5 +1,5 @@
 
-// /pages/api/buybackstep4.js
+// /pages/api/buybackstep4.js (DEBUG VERSION)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,7 +12,15 @@ export default async function handler(req, res) {
   const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
   const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
 
+  logs.push("🔍 Environment Check:");
+  logs.push("SHOPIFY_DOMAIN = " + (SHOPIFY_DOMAIN || '[undefined]'));
+  logs.push("SHOPIFY_ADMIN_API_TOKEN = " + (ACCESS_TOKEN ? '[REDACTED]' : '[undefined]'));
+
   try {
+    if (!SHOPIFY_DOMAIN || !ACCESS_TOKEN) {
+      throw new Error("Missing environment variables");
+    }
+
     // Step 1: Get Shopify location ID (only once)
     const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
       headers: {
@@ -20,7 +28,16 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       }
     });
-    const locationData = await locationRes.json();
+    const locationText = await locationRes.text();
+    logs.push("🌐 Raw location response: " + locationText);
+
+    let locationData;
+    try {
+      locationData = JSON.parse(locationText);
+    } catch (e) {
+      throw new Error("Failed to parse locations.json: " + locationText);
+    }
+
     const locationId = locationData.locations?.[0]?.id;
     if (!locationId) throw new Error("No Shopify location ID found.");
 
@@ -39,7 +56,16 @@ export default async function handler(req, res) {
           'Content-Type': 'application/json'
         }
       });
-      const skuData = await skuRes.json();
+      const skuText = await skuRes.text();
+      logs.push("🔍 SKU response: " + skuText);
+
+      let skuData;
+      try {
+        skuData = JSON.parse(skuText);
+      } catch (e) {
+        throw new Error("Failed to parse variants.json: " + skuText);
+      }
+
       variant = skuData.variants?.[0];
 
       if (!variant) {
@@ -50,7 +76,10 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json'
           }
         });
-        const productData = await productRes.json();
+        const productText = await productRes.text();
+        logs.push("🔍 Title fallback response: " + productText);
+
+        const productData = JSON.parse(productText);
         product = productData.products?.[0];
         variant = product?.variants?.[0];
         logs.push(`🔍 Matched by title: ${cardName}`);
@@ -65,7 +94,6 @@ export default async function handler(req, res) {
 
       const inventoryItemId = variant.inventory_item_id;
 
-      // Only update inventory if it's a real trade (not estimate)
       if (!estimate) {
         const updateRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/set.json`, {
           method: 'POST',
@@ -80,13 +108,8 @@ export default async function handler(req, res) {
           })
         });
 
-        if (!updateRes.ok) {
-          const errText = await updateRes.text();
-          logs.push(`❌ Inventory update failed: ${errText}`);
-          continue;
-        }
-
-        logs.push(`📦 Inventory set for ${cardName} to ${quantity}`);
+        const updateText = await updateRes.text();
+        logs.push("📦 Inventory update response: " + updateText);
       } else {
         logs.push(`🧪 Estimate only for ${cardName}, quantity ${quantity}`);
       }
@@ -102,7 +125,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, processed, logs });
   } catch (err) {
     const message = "❌ Fatal API Crash: " + (err.stack || err.message || err.toString());
-    console.error(message);
-    return res.status(500).send(message);
+    logs.push(message);
+    return res.status(500).json({ error: true, logs });
   }
 }
