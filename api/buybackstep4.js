@@ -1,173 +1,175 @@
 
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+  try {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
 
-  const estimateMode = req.query?.estimate === 'true';
-  const { cards, employeeName, payoutMethod, overrideTotal } = req.body;
+    const estimateMode = req.query?.estimate === 'true';
+    const { cards, employeeName, payoutMethod, overrideTotal } = req.body;
 
-  if (!cards || !Array.isArray(cards)) {
-    return res.status(400).json({ error: 'Invalid or missing cards array' });
-  }
+    if (!cards || !Array.isArray(cards)) {
+      return res.status(400).json({ error: 'Invalid or missing cards array' });
+    }
 
-  const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
-  const ACCESS_TOKEN = "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";
+    const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
+    const ACCESS_TOKEN = "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";
 
-  const fetchVariantBySKU = async (sku) => {
-    try {
-      const query = `
-        {
-          productVariants(first: 1, query: "sku:${sku}") {
-            edges {
-              node {
-                id
-                title
-                sku
-                price
-                inventoryQuantity
-                inventoryItem {
-                  id
-                }
-                product {
-                  title
-                }
-              }
+    
+const fetchVariantBySKU = async (sku) => {
+  const query = `
+    {
+      productVariants(first: 1, query: "sku:${sku}") {
+        edges {
+          node {
+            id
+            title
+            sku
+            price
+            inventoryQuantity
+            product {
+              title
             }
           }
         }
-      `;
-
-      const graphqlRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query })
-      });
-
-      const json = await graphqlRes.json();
-      return json?.data?.productVariants?.edges?.[0]?.node || null;
-    } catch (err) {
-      return { error: 'GraphQL SKU lookup failed', details: err.message };
-    }
-  };
-
-  const fetchVariantByTitle = async (title) => {
-    try {
-      const productRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(title)}\`, {
-        method: 'GET',
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      const productText = await productRes.text();
-      let productData = JSON.parse(productText);
-
-      if (!productData.products || productData.products.length === 0) {
-        return null;
       }
-
-      const product = productData.products[0];
-      const variant = product.variants[0];
-      return {
-        sku: variant.sku,
-        price: variant.price,
-        inventoryItem: {
-          id: variant.inventory_item_id
-        },
-        product: {
-          title: product.title
-        }
-      };
-    } catch (err) {
-      return { error: 'REST title lookup failed', details: err.message };
     }
-  };
+  `;
 
-  let locationId = null;
-  try {
-    const locationRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json\`, {
-      headers: {
-        'X-Shopify-Access-Token': ACCESS_TOKEN,
-        'Content-Type': 'application/json'
-      }
-    });
+  const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': ACCESS_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query })
+  });
 
-    const locations = await locationRes.json();
-    if (!locations.locations || locations.locations.length === 0) {
-      return res.status(500).json({ error: 'No inventory locations found' });
-    }
-    locationId = locations.locations[0].id;
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to retrieve inventory locations', details: err.message });
-  }
+  const json = await graphqlRes.json();
+  const variantEdge = json?.data?.productVariants?.edges?.[0];
+  return variantEdge?.node || null;
+};
 
   let totalValue = 0;
-  const results = [];
+    const results = [];
 
-  for (const card of cards) {
-    const { variantSku, cardName, quantity = 1 } = card;
-    let variant = await fetchVariantBySKU(variantSku);
+    for (const card of cards) {
+      const { cardName, sku = null, quantity = 1 } = card;
 
-    if (variant?.error) {
-      results.push({ variantSku, cardName, error: variant.error, details: variant.details });
-      continue;
-    }
-
-    if (!variant) {
-      variant = await fetchVariantByTitle(cardName);
-    }
-
-    if (variant?.error) {
-      results.push({ variantSku, cardName, error: variant.error, details: variant.details });
-      continue;
-    }
-
-    if (!variant) {
-      results.push({ variantSku, cardName, error: 'Variant not found by SKU or title' });
-      continue;
-    }
-
-    const value = parseFloat(variant.price || "0") * 0.3;
-    totalValue += value * quantity;
-
-    if (!estimateMode) {
-      try {
-        await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
-          method: 'POST',
+      const productRes = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`,
+        {
+          method: 'GET',
           headers: {
             'X-Shopify-Access-Token': ACCESS_TOKEN,
             'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const productText = await productRes.text();
+      let productData;
+
+      try {
+        productData = JSON.parse(productText);
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to parse product data', details: err.message });
+      }
+
+      // If no product by title, try variant SKU match
+      if (!productData || !productData.products || productData.products.length === 0) {
+        const variantsRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json`, {
+          method: 'GET',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const variantsText = await variantsRes.text();
+        let variantsData;
+        try {
+          variantsData = JSON.parse(variantsText);
+        } catch (parseErr) {
+          return res.status(500).json({ error: 'Failed to parse variants data', details: parseErr.message });
+        }
+
+        const matchedVariant = await fetchVariantBySKU(sku || cardName);
+        if (matchedVariant) {
+          const variantPrice = parseFloat(matchedVariant.price || 0);
+          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          totalValue += tradeInValue * quantity;
+          results.push({
+            cardName: matchedVariant.title,
+            match: matchedVariant.title,
+            tradeInValue,
+            quantity
+          });
+          continue;
+        } else {
+          results.push({
+            cardName,
+            match: null,
+            tradeInValue: 0,
+            quantity
+          });
+          continue;
+        }
+      }
+
+      // Fallback to first product variant
+      const match = productData.products[0];
+      const variant = match.variants[0];
+      const variantPrice = parseFloat(variant.price || 0);
+      const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+      totalValue += tradeInValue * quantity;
+
+      results.push({
+        cardName,
+        match: match.title,
+        tradeInValue,
+        quantity
+      });
+    }
+
+    const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
+
+    
+    let giftCardCode = null;
+    if (payoutMethod === "store-credit" && finalPayout > 0) {
+      try {
+        const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
+          method: "POST",
+          headers: {
+            "X-Shopify-Access-Token": ACCESS_TOKEN,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            location_id: locationId,
-            inventory_item_id: variant.inventoryItem.id,
-            available_adjustment: quantity
+            gift_card: {
+              initial_value: finalPayout.toFixed(2),
+              note: `Buyback payout for ${employeeName || "Unknown"}`,
+              currency: "CAD"
+            }
           })
         });
+        const giftCardData = await giftCardRes.json();
+        giftCardCode = giftCardData?.gift_card?.code || null;
       } catch (err) {
-        results.push({ variantSku, cardName, error: 'Inventory update failed', details: err.message });
-        continue;
+        console.error("Gift card creation failed:", err);
       }
     }
 
-    results.push({
-      title: variant.product.title,
-      sku: variant.sku,
-      quantity,
-      value: value.toFixed(2)
+    res.status(200).json({
+      giftCardCode,
+      estimate: estimateMode,
+      employeeName,
+      payoutMethod,
+      results,
+      total: totalValue.toFixed(2),
+      overrideTotal: overrideTotal ? finalPayout.toFixed(2) : null
     });
+  } catch (err) {
+    console.error("Fatal API Error:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
-
-  return res.status(200).json({
-    processedBy: employeeName,
-    totalValue: totalValue.toFixed(2),
-    payoutMethod,
-    overrideTotal,
-    results
-  });
 };
