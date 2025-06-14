@@ -98,7 +98,7 @@ const fetchVariantBySKU = async (sku) => {
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
           const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
+          totalValue += parseFloat(variant.price || '0') * quantity;
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
@@ -122,7 +122,7 @@ const fetchVariantBySKU = async (sku) => {
       const variant = match.variants[0];
       const variantPrice = parseFloat(variant.price || 0);
       const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-      totalValue += tradeInValue * quantity;
+      totalValue += parseFloat(variant.price || '0') * quantity;
 
       results.push({
         cardName,
