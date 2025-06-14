@@ -6,11 +6,13 @@ module.exports = async function handler(req, res) {
     }
 
     const estimateMode = req.query?.estimate === 'true';
-    const { cards, employeeName, payoutMethod, overrideTotal } = req.body;
+   const cards = req.body.cards || req.body.results || [];
 
-    if (!cards || !Array.isArray(cards)) {
-      return res.status(400).json({ error: 'Invalid or missing cards array' });
-    }
+if (!cards || !Array.isArray(cards)) {
+  return res.status(400).json({ error: 'Invalid or missing cards array' });
+}
+
+const { employeeName, payoutMethod, overrideTotal } = req.body;
 
     const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
     const ACCESS_TOKEN = "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";
