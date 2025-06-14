@@ -36,17 +36,14 @@ module.exports = async function handler(req, res) {
     }
 
     if (!productData.products || productData.products.length === 0) {
-      results.push({
-      retailPrice, cardName, error: "Card not found in Shopify inventory" });
+      results.push({ cardName, error: "Card not found in Shopify inventory" });
       continue;
     }
 
     const variant = productData.products[0].variants[0];
-    const retailPrice = parseFloat(variant.price);
     const tradeInValue = parseFloat(variant.compare_at_price || variant.price) * 0.3;
 
     results.push({
-      retailPrice,
       cardName,
       match: productData.products[0].title,
       tradeInValue,
