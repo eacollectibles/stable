@@ -166,7 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
             retailTotal += itemValue * (item.quantity || 1);
         }
     }
-    status += " | Estimated Trade Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
+    status += " | Items Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
     
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
@@ -234,10 +234,10 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
             retailTotal += itemValue * (item.quantity || 1);
         }
     }
-    status += " | Estimated Trade Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
+    status += " | Items Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
     
-    status += " | Items Value: $" + parseFloat(data.total || 0).toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total || 0).toFixed(2);
 
     statusBar.textContent = status;
     statusBar.style.color = "blue";
@@ -353,7 +353,7 @@ document.addEventListener("DOMContentLoaded", function () {
             retailTotal += itemValue * (item.quantity || 1);
         }
     }
-    status += " | Estimated Trade Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
+    status += " | Items Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
     
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
@@ -421,10 +421,10 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
             retailTotal += itemValue * (item.quantity || 1);
         }
     }
-    status += " | Estimated Trade Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
+    status += " | Items Value: $" + (parseFloat(data.total || 0) * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
     
-    status += " | Items Value: $" + parseFloat(data.total || 0).toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total || 0).toFixed(2);
 
     statusBar.textContent = status;
     statusBar.style.color = "blue";
