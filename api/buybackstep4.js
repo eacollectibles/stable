@@ -36,7 +36,7 @@ export default function handler(req, res) {
           body: JSON.stringify({
             gift_card: {
               initial_value: totalValue.toFixed(2),
-              note: `Buyback payout for ${employeeName || "Unknown"}`,
+              note: `Buyback payout`,
               currency: "CAD"
             }
           })
@@ -51,7 +51,6 @@ export default function handler(req, res) {
 
 res.status(200).json({
     giftCardCode,
-    payoutMethod,
     name: cardName,
     condition: matched.condition,
     tradeInValue: matched.price
