@@ -12,6 +12,32 @@ export default async function handler(req, res) {
   const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
   const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
 
+  // Helper function for rate limiting
+  const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Helper function for safe API calls
+  const safeApiCall = async (url, options = {}) => {
+    try {
+      const response = await fetch(url, options);
+      const text = await response.text();
+      
+      if (!response.ok) {
+        throw new Error(`API Error ${response.status}: ${response.statusText} - ${text}`);
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        throw new Error(`JSON Parse Error: ${text}`);
+      }
+      
+      return { data, text, ok: true };
+    } catch (error) {
+      return { error: error.message, ok: false };
+    }
+  };
+
   logs.push("🔍 Environment Check:");
   logs.push("SHOPIFY_DOMAIN = " + (SHOPIFY_DOMAIN || '[undefined]'));
   logs.push("SHOPIFY_ADMIN_API_TOKEN = " + (ACCESS_TOKEN ? '[REDACTED]' : '[undefined]'));
@@ -22,67 +48,78 @@ export default async function handler(req, res) {
     }
 
     // Step 1: Get Shopify location ID (only once)
-    const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
+    const locationResult = await safeApiCall(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/locations.json`, {
       headers: {
         'X-Shopify-Access-Token': ACCESS_TOKEN,
         'Content-Type': 'application/json'
       }
     });
-    const locationText = await locationRes.text();
-    logs.push("🌐 Raw location response: " + locationText);
 
-    let locationData;
-    try {
-      locationData = JSON.parse(locationText);
-    } catch (e) {
-      throw new Error("Failed to parse locations.json: " + locationText);
+    if (!locationResult.ok) {
+      throw new Error("Location API failed: " + locationResult.error);
     }
 
-    const locationId = locationData.locations?.[0]?.id;
+    logs.push("🌐 Raw location response: " + locationResult.text);
+
+    const locationId = locationResult.data.locations?.[0]?.id;
     if (!locationId) throw new Error("No Shopify location ID found.");
 
     logs.push(`✅ Shopify Location ID: ${locationId}`);
 
     const processed = [];
 
-    for (const card of results) {
+    for (let i = 0; i < results.length; i++) {
+      const card = results[i];
       const { match: cardName, cardSku, quantity = 1, tradeInValue } = card;
-      let product = null, variant = null;
+      let variant = null;
+
+      logs.push(`\n🔄 Processing card ${i + 1}/${results.length}: ${cardName}`);
+
+      // Add delay to prevent rate limiting
+      if (i > 0) {
+        await delay(500); // 500ms delay between requests
+      }
 
       // Try to match by SKU first
-      const skuRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json?sku=${encodeURIComponent(cardSku)}`, {
+      const skuResult = await safeApiCall(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/variants.json?sku=${encodeURIComponent(cardSku)}`, {
         headers: {
           'X-Shopify-Access-Token': ACCESS_TOKEN,
           'Content-Type': 'application/json'
         }
       });
-      const skuText = await skuRes.text();
-      logs.push("🔍 SKU response: " + skuText);
 
-      let skuData;
-      try {
-        skuData = JSON.parse(skuText);
-      } catch (e) {
-        throw new Error("Failed to parse variants.json: " + skuText);
+      if (!skuResult.ok) {
+        logs.push(`❌ SKU lookup failed for ${cardSku}: ${skuResult.error}`);
+        continue;
       }
 
-      variant = skuData.variants?.[0];
+      logs.push("🔍 SKU response: " + skuResult.text);
+      variant = skuResult.data.variants?.[0];
 
       if (!variant) {
+        // Add delay before fallback request
+        await delay(500);
+        
         // Fallback: search product by title
-        const productRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
+        const productResult = await safeApiCall(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/products.json?title=${encodeURIComponent(cardName)}`, {
           headers: {
             'X-Shopify-Access-Token': ACCESS_TOKEN,
             'Content-Type': 'application/json'
           }
         });
-        const productText = await productRes.text();
-        logs.push("🔍 Title fallback response: " + productText);
 
-        const productData = JSON.parse(productText);
-        product = productData.products?.[0];
+        if (!productResult.ok) {
+          logs.push(`❌ Title lookup failed for ${cardName}: ${productResult.error}`);
+          continue;
+        }
+
+        logs.push("🔍 Title fallback response: " + productResult.text);
+        const product = productResult.data.products?.[0];
         variant = product?.variants?.[0];
-        logs.push(`🔍 Matched by title: ${cardName}`);
+        
+        if (variant) {
+          logs.push(`🔍 Matched by title: ${cardName}`);
+        }
       } else {
         logs.push(`🔍 Matched by SKU: ${cardSku}`);
       }
@@ -95,7 +132,10 @@ export default async function handler(req, res) {
       const inventoryItemId = variant.inventory_item_id;
 
       if (!estimate) {
-        const updateRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/set.json`, {
+        // Add delay before inventory update
+        await delay(500);
+        
+        const updateResult = await safeApiCall(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/inventory_levels/set.json`, {
           method: 'POST',
           headers: {
             'X-Shopify-Access-Token': ACCESS_TOKEN,
@@ -108,8 +148,12 @@ export default async function handler(req, res) {
           })
         });
 
-        const updateText = await updateRes.text();
-        logs.push("📦 Inventory update response: " + updateText);
+        if (!updateResult.ok) {
+          logs.push(`❌ Inventory update failed for ${cardName}: ${updateResult.error}`);
+          continue;
+        }
+
+        logs.push("📦 Inventory update response: " + updateResult.text);
       } else {
         logs.push(`🧪 Estimate only for ${cardName}, quantity ${quantity}`);
       }
@@ -126,6 +170,3 @@ export default async function handler(req, res) {
   } catch (err) {
     const message = "❌ Fatal API Crash: " + (err.stack || err.message || err.toString());
     logs.push(message);
-    return res.status(500).json({ error: true, logs });
-  }
-}
