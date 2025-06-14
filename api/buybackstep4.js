@@ -15,90 +15,97 @@ module.exports = async function handler(req, res) {
   const ACCESS_TOKEN = "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";
 
   const fetchVariantBySKU = async (sku) => {
-    const query = `
-      {
-        productVariants(first: 1, query: "sku:${sku}") {
-          edges {
-            node {
-              id
-              title
-              sku
-              price
-              inventoryQuantity
-              inventoryItem {
+    try {
+      const query = `
+        {
+          productVariants(first: 1, query: "sku:${sku}") {
+            edges {
+              node {
                 id
-              }
-              product {
                 title
+                sku
+                price
+                inventoryQuantity
+                inventoryItem {
+                  id
+                }
+                product {
+                  title
+                }
               }
             }
           }
         }
-      }
-    `;
+      `;
 
-    const graphqlRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
-      method: 'POST',
-      headers: {
-        'X-Shopify-Access-Token': ACCESS_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query })
-    });
+      const graphqlRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
+        method: 'POST',
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
 
-    const json = await graphqlRes.json();
-    const variantEdge = json?.data?.productVariants?.edges?.[0];
-    return variantEdge?.node || null;
+      const json = await graphqlRes.json();
+      return json?.data?.productVariants?.edges?.[0]?.node || null;
+    } catch (err) {
+      return { error: 'GraphQL SKU lookup failed', details: err.message };
+    }
   };
 
   const fetchVariantByTitle = async (title) => {
-    const productRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(title)}\`, {
-      method: 'GET',
+    try {
+      const productRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(title)}\`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const productText = await productRes.text();
+      let productData = JSON.parse(productText);
+
+      if (!productData.products || productData.products.length === 0) {
+        return null;
+      }
+
+      const product = productData.products[0];
+      const variant = product.variants[0];
+      return {
+        sku: variant.sku,
+        price: variant.price,
+        inventoryItem: {
+          id: variant.inventory_item_id
+        },
+        product: {
+          title: product.title
+        }
+      };
+    } catch (err) {
+      return { error: 'REST title lookup failed', details: err.message };
+    }
+  };
+
+  let locationId = null;
+  try {
+    const locationRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json\`, {
       headers: {
         'X-Shopify-Access-Token': ACCESS_TOKEN,
         'Content-Type': 'application/json'
       }
     });
 
-    const productText = await productRes.text();
-    let productData;
-    try {
-      productData = JSON.parse(productText);
-    } catch (err) {
-      return null;
+    const locations = await locationRes.json();
+    if (!locations.locations || locations.locations.length === 0) {
+      return res.status(500).json({ error: 'No inventory locations found' });
     }
-
-    if (!productData.products || productData.products.length === 0) {
-      return null;
-    }
-
-    const product = productData.products[0];
-    const variant = product.variants[0];
-    return {
-      sku: variant.sku,
-      price: variant.price,
-      inventoryItem: {
-        id: variant.inventory_item_id
-      },
-      product: {
-        title: product.title
-      }
-    };
-  };
-
-  const locationRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json\`, {
-    headers: {
-      'X-Shopify-Access-Token': ACCESS_TOKEN,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  const locations = await locationRes.json();
-  if (!locations.locations || locations.locations.length === 0) {
-    return res.status(500).json({ error: 'No inventory locations found' });
+    locationId = locations.locations[0].id;
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve inventory locations', details: err.message });
   }
 
-  const locationId = locations.locations[0].id;
   let totalValue = 0;
   const results = [];
 
@@ -106,8 +113,18 @@ module.exports = async function handler(req, res) {
     const { variantSku, cardName, quantity = 1 } = card;
     let variant = await fetchVariantBySKU(variantSku);
 
+    if (variant?.error) {
+      results.push({ variantSku, cardName, error: variant.error, details: variant.details });
+      continue;
+    }
+
     if (!variant) {
       variant = await fetchVariantByTitle(cardName);
+    }
+
+    if (variant?.error) {
+      results.push({ variantSku, cardName, error: variant.error, details: variant.details });
+      continue;
     }
 
     if (!variant) {
@@ -119,18 +136,23 @@ module.exports = async function handler(req, res) {
     totalValue += value * quantity;
 
     if (!estimateMode) {
-      await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          location_id: locationId,
-          inventory_item_id: variant.inventoryItem.id,
-          available_adjustment: quantity
-        })
-      });
+      try {
+        await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            location_id: locationId,
+            inventory_item_id: variant.inventoryItem.id,
+            available_adjustment: quantity
+          })
+        });
+      } catch (err) {
+        results.push({ variantSku, cardName, error: 'Inventory update failed', details: err.message });
+        continue;
+      }
     }
 
     results.push({
