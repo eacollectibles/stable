@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
       }
     `;
 
-    const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    const graphqlRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
       method: 'POST',
       headers: {
         'X-Shopify-Access-Token': ACCESS_TOKEN,
@@ -51,8 +51,42 @@ module.exports = async function handler(req, res) {
     return variantEdge?.node || null;
   };
 
-  // Get inventory location
-  const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
+  const fetchVariantByTitle = async (title) => {
+    const productRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(title)}\`, {
+      method: 'GET',
+      headers: {
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const productText = await productRes.text();
+    let productData;
+    try {
+      productData = JSON.parse(productText);
+    } catch (err) {
+      return null;
+    }
+
+    if (!productData.products || productData.products.length === 0) {
+      return null;
+    }
+
+    const product = productData.products[0];
+    const variant = product.variants[0];
+    return {
+      sku: variant.sku,
+      price: variant.price,
+      inventoryItem: {
+        id: variant.inventory_item_id
+      },
+      product: {
+        title: product.title
+      }
+    };
+  };
+
+  const locationRes = await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json\`, {
     headers: {
       'X-Shopify-Access-Token': ACCESS_TOKEN,
       'Content-Type': 'application/json'
@@ -69,19 +103,23 @@ module.exports = async function handler(req, res) {
   const results = [];
 
   for (const card of cards) {
-    const { variantSku, quantity = 1, condition } = card;
-    const variant = await fetchVariantBySKU(variantSku);
+    const { variantSku, cardName, quantity = 1 } = card;
+    let variant = await fetchVariantBySKU(variantSku);
 
     if (!variant) {
-      results.push({ sku: variantSku, error: 'Variant not found' });
+      variant = await fetchVariantByTitle(cardName);
+    }
+
+    if (!variant) {
+      results.push({ variantSku, cardName, error: 'Variant not found by SKU or title' });
       continue;
     }
 
-    const value = parseFloat(variant.price) * 0.3; // Example: 30% of price
+    const value = parseFloat(variant.price || "0") * 0.3;
     totalValue += value * quantity;
 
     if (!estimateMode) {
-      await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json`, {
+      await fetch(\`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': ACCESS_TOKEN,
