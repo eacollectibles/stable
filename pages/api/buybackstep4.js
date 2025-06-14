@@ -1,109 +1,201 @@
 
-import axios from 'axios';
-
-export default async function handler(req, res) {
-  const logs = [];
-  const log = (msg) => {
-    logs.push(msg);
-    console.log(msg);
-  };
-
-  log("🚨 STEP 1: Handler entered");
-
-  if (req.method !== 'POST') {
-    log("🚨 STEP 2: Method not allowed");
-    return res.status(405).json({ message: 'Method not allowed', logs });
-  }
-
-  const results = req.body.results || req.body.cards || [];
-  const match = results?.[0]?.match;
-  const quantity = results?.[0]?.quantity || 1;
-
-  if (!match) {
-    log("❌ STEP 2.5: Invalid or missing match value");
-    return res.status(400).json({ error: 'Invalid or missing cards array', logs });
-  }
-
-  log("🚨 STEP 3: Request body parsed");
-  log("Match value: " + match);
-  log("Quantity: " + quantity);
-
-  const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
-  const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY;
-
+module.exports = async function handler(req, res) {
   try {
-    log("🚨 STEP 4: Fetching Shopify products");
-    const productRes = await axios.get(
-      `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?limit=250`,
-      {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    const estimateMode = req.query?.estimate === 'true';
+    const cards = req.body.cards || req.body.results || [];
+
+    if (!cards || !Array.isArray(cards)) {
+      return res.status(400).json({ error: 'Invalid or missing cards array' });
+    }
+
+    const { employeeName, payoutMethod, overrideTotal } = req.body;
+
+    const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
+    const ACCESS_TOKEN = "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";
+    const LOCATION_ID = 74133467967; // Replace with your actual Shopify location_id
+
+    const fetchVariantBySKU = async (sku) => {
+      const query = `
+        {
+          productVariants(first: 1, query: "sku:${sku}") {
+            edges {
+              node {
+                id
+                title
+                sku
+                price
+                inventoryQuantity
+                inventoryItem {
+                  id
+                }
+                product {
+                  title
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const graphqlRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
+        method: 'POST',
         headers: {
           'X-Shopify-Access-Token': ACCESS_TOKEN,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ query })
+      });
+
+      const json = await graphqlRes.json();
+      const variantEdge = json?.data?.productVariants?.edges?.[0];
+      return variantEdge?.node || null;
+    };
+
+    let totalValue = 0;
+    const results = [];
+
+    for (const card of cards) {
+      const { cardName, sku = null, quantity = 1 } = card;
+
+      const productRes = await fetch(
+        \`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(cardName)}\`,
+        {
+          method: 'GET',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const productText = await productRes.text();
+      let productData;
+
+      try {
+        productData = JSON.parse(productText);
+      } catch (err) {
+        return res.status(500).json({ error: 'Failed to parse product data', details: err.message });
       }
-    );
 
-    const products = productRes.data.products;
-    let matchedVariant = null;
+      if (!productData || !productData.products || productData.products.length === 0) {
+        const matchedVariant = await fetchVariantBySKU(sku || cardName);
+        if (matchedVariant) {
+          const variantPrice = parseFloat(matchedVariant.price || 0);
+          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+          totalValue += tradeInValue * quantity;
 
-    for (const product of products) {
-      for (const variant of product.variants) {
-        if (
-          variant.sku?.toLowerCase() === match.toLowerCase() ||
-          product.title?.toLowerCase().includes(match.toLowerCase())
-        ) {
-          matchedVariant = variant;
-          break;
+          results.push({
+            cardName: matchedVariant.title,
+            match: matchedVariant.title,
+            tradeInValue,
+            quantity
+          });
+
+          if (!estimateMode && matchedVariant.inventoryItem?.id) {
+            try {
+              await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
+                method: 'POST',
+                headers: {
+                  'X-Shopify-Access-Token': ACCESS_TOKEN,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  location_id: LOCATION_ID,
+                  inventory_item_id: matchedVariant.inventoryItem.id,
+                  available_adjustment: quantity
+                })
+              });
+            } catch (err) {
+              console.error("Inventory adjustment failed:", err.message);
+            }
+          }
+
+          continue;
+        } else {
+          results.push({
+            cardName,
+            match: null,
+            tradeInValue: 0,
+            quantity
+          });
+          continue;
         }
       }
-      if (matchedVariant) break;
-    }
 
-    if (!matchedVariant) {
-      log("❌ STEP 5: No variant matched");
-      return res.status(404).json({ message: 'Variant not found by SKU or Title', logs });
-    }
+      const match = productData.products[0];
+      const variant = match.variants[0];
+      const variantPrice = parseFloat(variant.price || 0);
+      const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
+      totalValue += tradeInValue * quantity;
 
-    const inventory_item_id = matchedVariant.inventory_item_id;
-    log("✅ STEP 6: Found inventory_item_id: " + inventory_item_id);
+      results.push({
+        cardName,
+        match: match.title,
+        tradeInValue,
+        quantity
+      });
 
-    const locationRes = await axios.get(
-      `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`,
-      {
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
+      if (!estimateMode && variant.inventory_item_id) {
+        try {
+          await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
+            method: 'POST',
+            headers: {
+              'X-Shopify-Access-Token': ACCESS_TOKEN,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              location_id: LOCATION_ID,
+              inventory_item_id: variant.inventory_item_id,
+              available_adjustment: quantity
+            })
+          });
+        } catch (err) {
+          console.error("Inventory adjustment failed:", err.message);
+        }
       }
-    );
-
-    const location_id = locationRes.data.locations?.[0]?.id;
-    if (!location_id) {
-      log("❌ STEP 7: No location found");
-      return res.status(500).json({ message: 'No Shopify location found', logs });
     }
-    log("✅ STEP 8: Found location_id: " + location_id);
 
-    log("🚨 STEP 9: Posting to inventory_levels/adjust");
-    const adjustRes = await axios.post(
-      `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json`,
-      {
-        location_id,
-        inventory_item_id,
-        available_adjustment: quantity,
-      },
-      {
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
+    const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
+
+    let giftCardCode = null;
+    if (payoutMethod === "store-credit" && finalPayout > 0) {
+      try {
+        const giftCardRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json\`, {
+          method: "POST",
+          headers: {
+            "X-Shopify-Access-Token": ACCESS_TOKEN,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            gift_card: {
+              initial_value: finalPayout.toFixed(2),
+              note: \`Buyback payout for \${employeeName || "Unknown"}\`,
+              currency: "CAD"
+            }
+          })
+        });
+        const giftCardData = await giftCardRes.json();
+        giftCardCode = giftCardData?.gift_card?.code || null;
+      } catch (err) {
+        console.error("Gift card creation failed:", err);
       }
-    );
+    }
 
-    log("✅ STEP 10: Shopify inventory adjusted");
-    return res.status(200).json({ message: 'Inventory updated successfully', result: adjustRes.data, logs });
-  } catch (error) {
-    log("❌ STEP ERROR: " + (error.response?.data?.errors || error.message));
-    return res.status(500).json({ message: 'Error adjusting inventory', error: error.response?.data || error.message, logs });
+    res.status(200).json({
+      giftCardCode,
+      estimate: estimateMode,
+      employeeName,
+      payoutMethod,
+      results,
+      total: totalValue.toFixed(2),
+      overrideTotal: overrideTotal ? finalPayout.toFixed(2) : null
+    });
+  } catch (err) {
+    console.error("Fatal API Error:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
   }
-}
+};
