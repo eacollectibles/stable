@@ -105,6 +105,33 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   try {
+    console.log("✅ Script loaded: DOM ready");
+    const form = document.querySelector("form");
+    const statusBar = document.getElementById("status-bar");
+    const estimateBtn = document.getElementById("estimate-trade");
+
+    if (!form) {
+      console.error("❌ Form not found");
+      statusBar.textContent = "Form not found.";
+      return;
+    } else {
+      console.log("✅ Form found");
+    }
+
+    if (!statusBar) {
+      console.error("❌ status-bar not found");
+    } else {
+      console.log("✅ status-bar found");
+    }
+
+    if (!estimateBtn) {
+      console.error("❌ Estimate button not found");
+      statusBar.textContent = "Estimate button not found.";
+    } else {
+      console.log("✅ Estimate button found");
+    }
+
+    // Re-insert original script content
     document.addEventListener("DOMContentLoaded", function () {
   const form = document.getElementById('trade-form');
   const statusBar = document.getElementById('statusBar');
@@ -439,8 +466,9 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
   });
 });
   } catch (err) {
-    console.error("Script error:", err);
-    document.getElementById("status-bar").textContent = "Script failed to load. See console.";
+    console.error("❌ Script error:", err);
+    const bar = document.getElementById("status-bar");
+    if (bar) bar.textContent = "Script failed. See console.";
   }
 });
 </script>
