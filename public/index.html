@@ -158,17 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      
-    let retailTotal = 0;
-    if (Array.isArray(data.results)) {
-        for (const item of data.results) {
-            const itemValue = parseFloat(item.value || "0");
-            retailTotal += itemValue * (item.quantity || 1);
-        }
-    }
-    status += " | Estimated Trade Value: $" + (retailTotal * 0.3).toFixed(2);
-    status += " | Items Value: $" + retailTotal.toFixed(2);
-    
+      status += " | Items Value: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -226,18 +216,8 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
       });
     }
 
-    
-    let retailTotal = 0;
-    if (Array.isArray(data.results)) {
-        for (const item of data.results) {
-            const itemValue = parseFloat(item.value || "0");
-            retailTotal += itemValue * (item.quantity || 1);
-        }
-    }
-    status += " | Estimated Trade Value: $" + (retailTotal * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
-    
-    status += " | Items Value: $" + parseFloat(data.total || 0).toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
 
     statusBar.textContent = status;
     statusBar.style.color = "blue";
@@ -345,17 +325,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      
-    let retailTotal = 0;
-    if (Array.isArray(data.results)) {
-        for (const item of data.results) {
-            const itemValue = parseFloat(item.value || "0");
-            retailTotal += itemValue * (item.quantity || 1);
-        }
-    }
-    status += " | Estimated Trade Value: $" + (retailTotal * 0.3).toFixed(2);
-    status += " | Items Value: $" + retailTotal.toFixed(2);
-    
+      status += " | Items Value: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -413,18 +383,8 @@ document.getElementById("estimate-trade").addEventListener("click", function () 
       });
     }
 
-    
-    let retailTotal = 0;
-    if (Array.isArray(data.results)) {
-        for (const item of data.results) {
-            const itemValue = parseFloat(item.value || "0");
-            retailTotal += itemValue * (item.quantity || 1);
-        }
-    }
-    status += " | Estimated Trade Value: $" + (retailTotal * 0.3).toFixed(2);
     status += " | Items Value: $" + retailTotal.toFixed(2);
-    
-    status += " | Items Value: $" + parseFloat(data.total || 0).toFixed(2);
+    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
 
     statusBar.textContent = status;
     statusBar.style.color = "blue";
