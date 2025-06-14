@@ -2,26 +2,37 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  console.log("🚨 STEP 1: Handler entered");
+  const logs = [];
+  const log = (msg) => {
+    logs.push(msg);
+    console.log(msg);
+  };
+
+  log("🚨 STEP 1: Handler entered");
 
   if (req.method !== 'POST') {
-    console.log("🚨 STEP 2: Method not allowed");
-    return res.status(405).json({ message: 'Method not allowed' });
+    log("🚨 STEP 2: Method not allowed");
+    return res.status(405).json({ message: 'Method not allowed', logs });
   }
 
-  const { results } = req.body;
+  const results = req.body.results || req.body.cards || [];
   const match = results?.[0]?.match;
   const quantity = results?.[0]?.quantity || 1;
 
-  console.log("🚨 STEP 3: Request body parsed");
-  console.log("Match value:", match);
-  console.log("Quantity:", quantity);
+  if (!match) {
+    log("❌ STEP 2.5: Invalid or missing match value");
+    return res.status(400).json({ error: 'Invalid or missing cards array', logs });
+  }
+
+  log("🚨 STEP 3: Request body parsed");
+  log("Match value: " + match);
+  log("Quantity: " + quantity);
 
   const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
   const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_KEY;
 
   try {
-    console.log("🚨 STEP 4: Fetching Shopify products");
+    log("🚨 STEP 4: Fetching Shopify products");
     const productRes = await axios.get(
       `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?limit=250`,
       {
@@ -49,12 +60,12 @@ export default async function handler(req, res) {
     }
 
     if (!matchedVariant) {
-      console.log("❌ STEP 5: No variant matched");
-      return res.status(404).json({ message: 'Variant not found by SKU or Title' });
+      log("❌ STEP 5: No variant matched");
+      return res.status(404).json({ message: 'Variant not found by SKU or Title', logs });
     }
 
     const inventory_item_id = matchedVariant.inventory_item_id;
-    console.log("✅ STEP 6: Found inventory_item_id:", inventory_item_id);
+    log("✅ STEP 6: Found inventory_item_id: " + inventory_item_id);
 
     const locationRes = await axios.get(
       `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`,
@@ -68,12 +79,12 @@ export default async function handler(req, res) {
 
     const location_id = locationRes.data.locations?.[0]?.id;
     if (!location_id) {
-      console.log("❌ STEP 7: No location found");
-      return res.status(500).json({ message: 'No Shopify location found' });
+      log("❌ STEP 7: No location found");
+      return res.status(500).json({ message: 'No Shopify location found', logs });
     }
-    console.log("✅ STEP 8: Found location_id:", location_id);
+    log("✅ STEP 8: Found location_id: " + location_id);
 
-    console.log("🚨 STEP 9: Posting to inventory_levels/adjust");
+    log("🚨 STEP 9: Posting to inventory_levels/adjust");
     const adjustRes = await axios.post(
       `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json`,
       {
@@ -89,10 +100,10 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log("✅ STEP 10: Shopify inventory adjusted:", adjustRes.data);
-    res.status(200).json({ message: 'Inventory updated successfully', result: adjustRes.data });
+    log("✅ STEP 10: Shopify inventory adjusted");
+    return res.status(200).json({ message: 'Inventory updated successfully', result: adjustRes.data, logs });
   } catch (error) {
-    console.error("❌ STEP ERROR: Shopify API error:", error.response?.data || error.message);
-    res.status(500).json({ message: 'Error adjusting inventory', error: error.response?.data || error.message });
+    log("❌ STEP ERROR: " + (error.response?.data?.errors || error.message));
+    return res.status(500).json({ message: 'Error adjusting inventory', error: error.response?.data || error.message, logs });
   }
 }
