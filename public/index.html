@@ -2,193 +2,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>TESTING VERSION – Buyback Portal</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TESTING VERSION – Trade In Portal</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    input, select, button { margin: 5px; padding: 8px; font-size: 14px; }
-    .card-row { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-    .remove-btn { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; }
-    #trade-result { margin-top: 20px; font-size: 16px; }
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+    h1 { font-size: 2rem; margin-bottom: 20px; }
+    .card-row { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+    .card-row input, .card-row select { padding: 5px; flex: 1; }
+    .remove-card { background: red; color: white; border: none; padding: 6px 10px; cursor: pointer; border-radius: 4px; }
+    .results { margin-top: 30px; border-top: 1px solid #ccc; padding-top: 20px; }
+    .results h2 { font-size: 1.25rem; margin-bottom: 10px; }
+    .result-entry { margin-bottom: 8px; }
+    .total { font-weight: bold; margin-top: 15px; font-size: 1.2rem; }
+    button { padding: 8px 12px; border: none; background: #0077cc; color: white; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #005fa3; }
   </style>
 </head>
 <body>
-  <div style="background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;">
-    TESTING VERSION ACTIVE
-  </div>
-
-  <h2>Trade-In Cards</h2>
-  <form id="trade-form">
-    <label for="employeeName"><strong>Employee:</strong></label>
-    <select name="employeeName" id="employeeName" required style="margin-bottom: 10px;">
-      <option value="" disabled selected>Select Employee</option>
-      <option value="Alex">Alex</option>
-      <option value="Jamie">Jamie</option>
-      <option value="Morgan">Morgan</option>
-      <option value="Taylor">Taylor</option>
-    </select><br>
-
-<fieldset>
-  <legend><strong>Payout Method:</strong></legend>
-  <label><input type="radio" name="payoutMethod" value="store-credit" required> Store Credit</label>
-  <label><input type="radio" name="payoutMethod" value="cash" required> Cash</label>
-</fieldset>
-
-    <div id="card-list">
+<div style='background: #ffd700; color: #000; text-align: center; font-weight: bold; padding: 10px;'>TESTING VERSION ACTIVE</div>
+  <h1>Trade In Portal</h1>
+  <form>
+    <div id="card-container">
       <div class="card-row">
         <input type="text" name="cardName" placeholder="Card Name" required />
-        <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-        <select name="cardCondition" required>
+        <select name="condition">
           <option value="NM">NM</option>
           <option value="LP">LP</option>
           <option value="MP">MP</option>
         </select>
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
+        <button type="button" class="remove-card">❌ Remove</button>
       </div>
     </div>
     <button type="button" id="add-card">➕ Add Card</button>
-    <button type="submit" id="submit-trade">Submit Trade</button>
+    <button type="submit">Submit Trade</button>
   </form>
 
-  
-        <div id="status-bar" style="margin-top: 15px; padding: 10px; display: none;"></div>
+  <div class="results" id="results" style="display:none;">
+    <h2>Trade Results</h2>
+    <div id="result-list"></div>
+    <div class="total" id="total-value"></div>
+  </div>
 
-<h3>Trade Summary</h3>
-<ul id="trade-log" style="list-style: none; padding-left: 0;"></ul>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.querySelector("form");
+      const addBtn = document.getElementById("add-card");
+      const container = document.getElementById("card-container");
+      const resultsSection = document.getElementById("results");
+      const resultList = document.getElementById("result-list");
+      const totalValue = document.getElementById("total-value");
 
-        <div id="trade-log" style="margin-top: 20px;">
-          <h3>Trade Log</h3>
-          <div id="log-entries"></div>
-        </div>
-        <div id="trade-result">
-        </div>
-
-  
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const cardList = document.getElementById('card-list');
-  const tradeLog = document.getElementById('log-entries');
-  const statusBar = document.getElementById('status-bar');
-
-  document.getElementById('add-card').addEventListener('click', function () {
-    const newRow = document.createElement('div');
-    newRow.className = 'card-row';
-    newRow.innerHTML = `
-      <input type="text" name="cardName" placeholder="Card Name" required />
-      <input type="number" name="cardQty" placeholder="Qty" min="1" value="1" required />
-      <select name="cardCondition" required>
-        <option value="NM">NM</option>
-        <option value="LP">LP</option>
-        <option value="MP">MP</option>
-      </select>
-      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">✖</button>
-    `;
-    cardList.appendChild(newRow);
-  });
-
-  document.getElementById('trade-form').addEventListener('submit', function (e) {
-    e.preventDefault();
-
-    if (!confirm("Are you sure you want to process this trade and update Shopify inventory?")) {
-      return;
-    }
-
-    const cardRows = document.querySelectorAll('.card-row');
-    const tradeResult = document.getElementById("trade-result");
-    tradeResult.innerHTML = "Processing...";
-
-    const employee = document.getElementById('employeeName')?.value || 'Unknown';
-    let total = 0;
-    let processed = 0;
-    let summaryHTML = `<div><strong>Processed by:</strong> ${employee}</div>`;
-    let logEntry = `<strong>${new Date().toLocaleString()}</strong> — ${employee}<ul>`;
-
-    cardRows.forEach((row, index) => {
-      const name = row.querySelector('input[name="cardName"]').value;
-      const qty = parseInt(row.querySelector('input[name="cardQty"]').value) || 1;
-      const cond = row.querySelector('select[name="cardCondition"]').value;
-
-      fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardName: name, quantity: qty })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          summaryHTML += `<div style="color: red;">${name}: ${data.error}</div>`;
-          logEntry += `<li style="color:red;">${name}: ${data.error}</li>`;
-        } else {
-          const cardTotal = parseFloat(data.tradeInValue) * qty;
-          total += cardTotal;
-          summaryHTML += `
-            <div style="margin-bottom: 10px;">
-              <strong>${data.name}</strong> (${cond}) x${qty}<br>
-              Retail: $${data.price.toFixed(2)} | Inventory Now: ${data.inventory}<br>
-              Buyback: <span style="color: green;">$${data.tradeInValue}</span> × ${qty} = 
-              <span style="color: darkgreen;">$${cardTotal.toFixed(2)}</span>
-            </div>
-          `;
-          logEntry += `<li>${data.name} (${cond}) x${qty} → New Inventory: ${data.inventory}, Buyback Total: $${cardTotal.toFixed(2)}</li>`;
-        }
-      })
-      .catch(err => {
-        console.error("API error:", err);
-        summaryHTML += `<div style="color: red;">${name}: API error</div>`;
-        logEntry += `<li style="color:red;">${name}: API error</li>`;
-      })
-      .finally(() => {
-        processed++;
-        if (processed === cardRows.length) {
-          summaryHTML += `<hr><strong>Total Offer:</strong> <span style="color: darkgreen;">$${total.toFixed(2)}</span>`;
-          tradeResult.innerHTML = summaryHTML;
-          logEntry += `</ul><hr>`;
-          tradeLog.innerHTML = logEntry + tradeLog.innerHTML;
-          statusBar.innerText = "✅ Trade successfully processed.";
-
-    if (res.ok) {
-      let totalRetail = 0;
-      let totalPaidOut = 0;
-      cards.forEach(card => {
-        totalRetail += card.quantity * (card.retail || 0);
-        totalPaidOut += card.quantity * (card.tradeInValue || 0);
+      addBtn.addEventListener("click", () => {
+        const row = document.createElement("div");
+        row.className = "card-row";
+        row.innerHTML = `
+          <input type="text" name="cardName" placeholder="Card Name" required />
+          <select name="condition">
+            <option value="NM">NM</option>
+            <option value="LP">LP</option>
+            <option value="MP">MP</option>
+          </select>
+          <button type="button" class="remove-card">❌ Remove</button>
+        `;
+        container.appendChild(row);
       });
-      const now = new Date().toLocaleString();
-      const logEntry = document.createElement('li');
-      logEntry.textContent = `${employee} – ${payoutMethod} – ${cards.length} item(s) – ${now} – Retail: $${totalRetail.toFixed(2)} – Paid: $${totalPaidOut.toFixed(2)}`;
-      document.getElementById('trade-log').appendChild(logEntry);
-    }
 
-          statusBar.style.background = "#d4edda";
-          statusBar.style.color = "#155724";
-          statusBar.style.border = "1px solid #c3e6cb";
-          statusBar.style.display = "block";
+      container.addEventListener("click", (e) => {
+        if (e.target.classList.contains("remove-card")) {
+          e.target.parentElement.remove();
         }
+      });
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const cards = [];
+        document.querySelectorAll(".card-row").forEach(row => {
+          const name = row.querySelector("input[name='cardName']").value.trim();
+          const condition = row.querySelector("select[name='condition']").value;
+          if (name) {
+            cards.push({ cardName: name, condition });
+          }
+        });
+
+        fetch("/.netlify/functions/buybackstep4", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cards })
+        })
+        .then(res => res.json())
+        .then(data => {
+          resultList.innerHTML = "";
+          resultsSection.style.display = "block";
+          data.results.forEach(card => {
+            if (card.payout) {
+              resultList.innerHTML += `<div class="result-entry">${card.name} (${card.condition}) → $${card.payout}</div>`;
+            } else {
+              resultList.innerHTML += `<div class="result-entry">${card.name} (${card.condition}) → ${card.error}</div>`;
+            }
+          });
+          totalValue.textContent = "Total Trade Offer: $" + data.total;
+        });
       });
     });
+  </script>
+
+<script>
+document.getElementById('submit-trade')?.addEventListener('click', function() {
+  const input = document.querySelector('input[name="cardName"]');
+  const cardName = input ? input.value : "Test Card";
+
+  fetch('/api/buybackstep4', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cardName: cardName })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("API Response:", data);
+    alert("Received response: " + JSON.stringify(data));
+  })
+  .catch(err => {
+    console.error("Error contacting API:", err);
+    alert("API error. Check console.");
   });
 });
-
-  // Load trade history from server on page load
-  fetch('/api/getTradeLog')
-    .then(res => res.json())
-    .then(logs => {
-      const tradeLog = document.getElementById('trade-log');
-      logs.forEach(entry => {
-        let totalRetail = 0, totalPaid = 0;
-        entry.cards.forEach(c => {
-          totalRetail += (c.quantity || 0) * (c.retail || 0);
-          totalPaid += (c.quantity || 0) * (c.tradeInValue || 0);
-        });
-        const dateStr = new Date(entry.timestamp).toLocaleString();
-        const li = document.createElement('li');
-        li.textContent = `${entry.employee} – ${entry.payoutMethod} – ${entry.cards.length} item(s) – ${dateStr} – Retail: $${totalRetail.toFixed(2)} – Paid: $${totalPaid.toFixed(2)}`;
-        tradeLog.appendChild(li);
-      });
-    }).catch(err => console.error("Error loading trade log:", err));
 </script>
-
 
 </body>
 </html>
