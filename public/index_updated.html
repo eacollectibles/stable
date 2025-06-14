@@ -207,40 +207,5 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
-
-  <div style="margin-top: 20px;">
-    <label for="overrideTotal"><strong>Override Payout Amount ($):</strong></label>
-    <input type="number" id="overrideTotal" step="0.01" placeholder="e.g. 50.00" />
-  </div>
-  <script>
-    const originalSubmitTrade = window.submitTrade || function () {};
-    window.submitTrade = function () {
-      const overrideValue = document.getElementById('overrideTotal').value;
-      const formData = collectFormData();
-      formData.cards = formData.cards.map(card => ({
-        ...card,
-        sku: card.cardName
-      })); // Assumes this function exists
-      if (overrideValue) {
-        formData.overrideTotal = parseFloat(overrideValue);
-      }
-      // Post to the backend
-      fetch('/api/buybackstep4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById("statusBar").innerText = "Trade submitted. Paid out: $" + (data.overrideTotal || data.total);
-        console.log(data);
-      })
-      .catch(error => {
-        console.error("Error submitting trade:", error);
-        document.getElementById("statusBar").innerText = "Submission failed.";
-      });
-    }
-  </script>
-
 </body>
 </html>

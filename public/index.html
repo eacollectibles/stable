@@ -2,44 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 30px 60px;
-    max-width: 1200px;
-    margin: auto;
-  }
-  h2, h3 {
-    font-size: 1.75em;
-    margin-top: 30px;
-  }
-  input, select, button {
-    font-size: 16px;
-    padding: 10px;
-    margin: 8px;
-    min-width: 150px;
-  }
-  .card-row {
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-  }
-  #statusBar {
-    font-size: 16px;
-    margin-top: 20px;
-    padding: 10px;
-    background: #f9f9f9;
-    border: 1px solid #ccc;
-  }
-  #imagePreviewGallery img {
-    max-width: 150px;
-    height: auto;
-    border-radius: 4px;
-  }
-</style>
-
   <meta charset="UTF-8">
   <title>TESTING VERSION – Buyback Portal</title>
   <style>
@@ -86,12 +48,20 @@
     </div>
     <button type="button" id="add-card">➕ Add Card</button>
     <button type="submit" id="submit-trade">Submit Trade</button>
-<button type="button" id="estimate-trade" style="background-color: #007bff; color: white; font-weight: bold;">Estimate</button>
   
     <div id="card-image-upload" style="margin-top: 10px;">
       <label for="cardImage"><strong>Upload Card Image (optional):</strong></label>
       <input type="file" id="cardImage" name="cardImage" accept="image/*" onchange="previewImage(event)" style="display: block; margin-top: 5px;" />
-    <div id="imagePreviewContainer" style="margin-top: 10px;"><img id="imagePreview" src="" style="max-width: 200px; display: none; border: 1px solid #ccc;" /></div></form>
+    <div id="imagePreviewContainer" style="margin-top: 10px;"><img id="imagePreview" src="" style="max-width: 200px; display: none; border: 1px solid #ccc;" /></div>
+
+    <button type="button" id="testButton" style="background-color: orange; color: white; font-weight: bold;">
+      Test Trade Input
+    </button>
+
+    <button type="submit" style="background-color: green; color: white; font-weight: bold;">
+      Submit Trade
+    </button>
+    </form>
 
     <div id="statusBar" style="margin-top: 20px; font-weight: bold;"></div>
 
@@ -149,8 +119,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("tradeLog").innerHTML = "";  // Clear previous log
         data.results.forEach(result => {
           const logEntry = document.createElement("div");
-          const safePrice = isNaN(parseFloat(result.retailPrice)) ? 0 : parseFloat(result.retailPrice);
-          logEntry.textContent = `${result.cardName} — $${safePrice.toFixed(2)} × ${result.quantity}`;
+          logEntry.textContent = `${result.cardName} — $${parseFloat(result.retailPrice).toFixed(2)} × ${result.quantity}`;
           document.getElementById("tradeLog").appendChild(logEntry);
           if (result.retailPrice && result.quantity) {
             retailTotal += result.retailPrice * result.quantity;
@@ -158,7 +127,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      status += " | Items Value: $" + retailTotal.toFixed(2);
+      status += " | Retail Total: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -175,60 +144,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
-
-document.getElementById("estimate-trade").addEventListener("click", function () {
-  const statusBar = document.getElementById("statusBar");
-  const cardRows = Array.from(document.querySelectorAll('.card-row'));
-  const cards = [];
-
-  cardRows.forEach(row => {
-    const cardNameInput = row.querySelector('input[name="cardName"]');
-    const quantityInput = row.querySelector('input[name="cardQuantity"]');
-    const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
-
-    if (cardName && quantity > 0) {
-      cards.push({ cardName, quantity });
-    }
-  });
-
-  const employeeName = document.getElementById('employeeName')?.value || '';
-  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
-  statusBar.textContent = "Calculating estimate...";
-  statusBar.style.color = "black";
-
-  fetch("/api/buybackstep4?estimate=true", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeName, payoutMethod, cards })
-  })
-  .then(res => res.json())
-  .then(data => {
-    let status = "Estimate complete!";
-    let retailTotal = 0;
-
-    if (Array.isArray(data.results)) {
-      data.results.forEach(result => {
-        if (result.retailPrice && result.quantity) {
-          retailTotal += parseFloat(result.retailPrice) * result.quantity;
-        }
-      });
-    }
-
-    status += " | Items Value: $" + retailTotal.toFixed(2);
-    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
-
-    statusBar.textContent = status;
-    statusBar.style.color = "blue";
-  })
-  .catch(err => {
-    console.error("Error estimating trade:", err);
-    statusBar.textContent = "Error calculating estimate.";
-    statusBar.style.color = "red";
-  });
-});
-
 </script>
 
     
@@ -325,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      status += " | Items Value: $" + retailTotal.toFixed(2);
+      status += " | Retail Total: $" + retailTotal.toFixed(2);
       status += " | Trade Payout: $" + parseFloat(data.total).toFixed(2);
 
       if (data.giftCardCode) {
@@ -342,60 +257,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 });
-
-document.getElementById("estimate-trade").addEventListener("click", function () {
-  const statusBar = document.getElementById("statusBar");
-  const cardRows = Array.from(document.querySelectorAll('.card-row'));
-  const cards = [];
-
-  cardRows.forEach(row => {
-    const cardNameInput = row.querySelector('input[name="cardName"]');
-    const quantityInput = row.querySelector('input[name="cardQuantity"]');
-    const cardName = cardNameInput?.value?.trim() || '';
-    const quantity = quantityInput ? parseInt(quantityInput.value || "1", 10) : 1;
-
-    if (cardName && quantity > 0) {
-      cards.push({ cardName, quantity });
-    }
-  });
-
-  const employeeName = document.getElementById('employeeName')?.value || '';
-  const payoutMethod = document.querySelector('input[name="payoutMethod"]:checked')?.value || 'Cash';
-
-  statusBar.textContent = "Calculating estimate...";
-  statusBar.style.color = "black";
-
-  fetch("/api/buybackstep4?estimate=true", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ employeeName, payoutMethod, cards })
-  })
-  .then(res => res.json())
-  .then(data => {
-    let status = "Estimate complete!";
-    let retailTotal = 0;
-
-    if (Array.isArray(data.results)) {
-      data.results.forEach(result => {
-        if (result.retailPrice && result.quantity) {
-          retailTotal += parseFloat(result.retailPrice) * result.quantity;
-        }
-      });
-    }
-
-    status += " | Items Value: $" + retailTotal.toFixed(2);
-    status += " | Estimated Trade Value: $" + parseFloat(data.total).toFixed(2);
-
-    statusBar.textContent = status;
-    statusBar.style.color = "blue";
-  })
-  .catch(err => {
-    console.error("Error estimating trade:", err);
-    statusBar.textContent = "Error calculating estimate.";
-    statusBar.style.color = "red";
-  });
-});
-
 </script>
 
 </body>
