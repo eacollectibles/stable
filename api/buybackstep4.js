@@ -98,7 +98,7 @@ const fetchVariantBySKU = async (sku) => {
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
           const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
+          totalValue += parseFloat(variant.price || '0') * quantity;
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
@@ -122,7 +122,7 @@ const fetchVariantBySKU = async (sku) => {
       const variant = match.variants[0];
       const variantPrice = parseFloat(variant.price || 0);
       const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-      totalValue += tradeInValue * quantity;
+      totalValue += parseFloat(variant.price || '0') * quantity;
 
       results.push({
         cardName,
@@ -173,3 +173,61 @@ const fetchVariantBySKU = async (sku) => {
     return res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
+
+
+    // Get Shopify Location ID
+    const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
+      headers: {
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const locations = await locationRes.json();
+    if (!locations.locations || locations.locations.length === 0) {
+      return res.status(500).json({ error: 'No inventory locations found' });
+    }
+
+    const locationId = locations.locations[0].id;
+
+    // Inventory update loop
+    for (const card of cards) {
+      const { cardName, quantity = 1 } = card;
+
+      // Look up product by title
+      const productRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
+        method: 'GET',
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const productData = await productRes.json();
+      if (!productData.products || productData.products.length === 0) {
+        results.push({ cardName, error: 'Product not found' });
+        continue;
+      }
+
+      const product = productData.products[0];
+      const variant = product.variants[0];
+
+      if (!estimateMode) {
+        // Post inventory adjustment
+        const inventoryUpdateRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            location_id: locationId,
+            inventory_item_id: variant.inventory_item_id,
+            available_adjustment: quantity
+          })
+        });
+
+        const updateResult = await inventoryUpdateRes.json();
+        results.push({ cardName, updatedInventory: updateResult });
+      }
+    }
