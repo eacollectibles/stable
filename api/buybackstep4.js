@@ -4,20 +4,16 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { cards, employeeName, payoutMethod } = req.body;
-  if (!cards || !Array.isArray(cards)) {
-    return res.status(400).json({ error: 'Invalid or missing cards array' });
+  const { cardName, quantity = 1 } = req.body;
+  if (!cardName) {
+    return res.status(400).json({ error: 'Missing card name' });
   }
 
   const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
   const ACCESS_TOKEN = "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";
 
-  let totalValue = 0;
-  const results = [];
-
-  for (const card of cards) {
-    const { cardName, quantity = 1 } = card;
-
+  try {
+    // Step 1: Find the product
     const productRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
       method: 'GET',
       headers: {
@@ -25,7 +21,6 @@ module.exports = async function handler(req, res) {
         'Content-Type': 'application/json'
       }
     });
-
     const productText = await productRes.text();
 
     let productData;
@@ -36,50 +31,60 @@ module.exports = async function handler(req, res) {
     }
 
     if (!productData.products || productData.products.length === 0) {
-      results.push({ cardName, error: "Card not found in Shopify inventory" });
-      continue;
+      return res.status(404).json({ error: 'Card not found in Shopify inventory' });
     }
 
-    const variant = productData.products[0].variants[0];
-    const tradeInValue = parseFloat(variant.compare_at_price || variant.price) * 0.3;
+    const product = productData.products[0];
+    const variant = product.variants[0];
+    const inventoryItemId = variant.inventory_item_id;
 
-    results.push({
-      cardName,
-      match: productData.products[0].title,
-      tradeInValue,
-      quantity,
+    // Step 2: Get location ID
+    const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
+      headers: {
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
     });
 
-    totalValue += tradeInValue * quantity;
-  }
+    const locations = await locationRes.json();
+    if (!locations.locations || locations.locations.length === 0) {
+      return res.status(500).json({ error: 'No inventory locations found' });
+    }
 
-  let giftCardCode = null;
+    const locationId = locations.locations[0].id;
 
-  if (payoutMethod?.toLowerCase() === "store-credit" && totalValue > 0) {
-    const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
-      method: "POST",
+    // Step 3: Adjust inventory level
+    const adjustRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json`, {
+      method: 'POST',
       headers: {
-        "X-Shopify-Access-Token": ACCESS_TOKEN,
-        "Content-Type": "application/json"
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        gift_card: {
-          initial_value: totalValue.toFixed(2),
-          note: `Trade-in credit issued by ${employeeName}`,
-          currency: "CAD"
-        }
+        location_id: locationId,
+        inventory_item_id: inventoryItemId,
+        available_adjustment: parseInt(quantity)
       })
     });
 
-    const giftCardData = await giftCardRes.json();
-    giftCardCode = giftCardData.gift_card?.code || null;
-  }
+    const adjustData = await adjustRes.json();
+    if (adjustRes.status !== 200) {
+      return res.status(500).json({ error: "Failed to adjust inventory", details: adjustData });
+    }
 
-  return res.status(200).json({
-    employee: employeeName,
-    payoutMethod,
-    results,
-    total: totalValue.toFixed(2),
-    giftCardCode
-  });
+    // Return product info and confirmation
+    return res.status(200).json({
+      name: product.title,
+      sku: variant.sku,
+      price: parseFloat(variant.price),
+      inventory: adjustData.inventory_level.available,
+      condition: "NM",
+      tradeInValue: (parseFloat(variant.price) * 0.30).toFixed(2),
+      restocked: parseInt(quantity)
+    });
+
+  } catch (err) {
+    console.error('Shopify API Error:', err);
+    return res.status(500).json({ error: 'Failed to connect to Shopify API', details: err.message });
+  }
 };
