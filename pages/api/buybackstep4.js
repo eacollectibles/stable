@@ -1,172 +1,108 @@
 
-module.exports = async function handler(req, res) {
+// /pages/api/buybackstep4.js
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const logs = [];
+  const { results = [], estimate = false, employeeName, payoutMethod } = req.body;
+
+  const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
+  const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN;
+
   try {
-    const logs = [];
-    const log = (msg) => {
-      logs.push(msg);
-      console.log(msg);
-    };
+    // Step 1: Get Shopify location ID (only once)
+    const locationRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/locations.json`, {
+      headers: {
+        'X-Shopify-Access-Token': ACCESS_TOKEN,
+        'Content-Type': 'application/json'
+      }
+    });
+    const locationData = await locationRes.json();
+    const locationId = locationData.locations?.[0]?.id;
+    if (!locationId) throw new Error("No Shopify location ID found.");
 
-    log("🚨 STEP 1: Handler entered");
+    logs.push(`✅ Shopify Location ID: ${locationId}`);
 
-    if (req.method !== 'POST') {
-      log("🚨 STEP 2: Method not allowed");
-      return res.status(405).json({ message: 'Method not allowed', logs });
-    }
+    const processed = [];
 
-    const estimateMode = req.query?.estimate === 'true';
-    const cards = req.body.cards || req.body.results || [];
-    const { employeeName, payoutMethod, overrideTotal } = req.body;
+    for (const card of results) {
+      const { match: cardName, cardSku, quantity = 1, tradeInValue } = card;
+      let product = null, variant = null;
 
-    if (!cards || !Array.isArray(cards)) {
-      log("❌ STEP 3: Invalid or missing cards array");
-      return res.status(400).json({ error: 'Invalid or missing cards array', logs });
-    }
-
-    const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
-    const ACCESS_TOKEN = "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";
-
-    const fetchVariantBySKU = async (sku) => {
-      const query = `
-        {
-          productVariants(first: 1, query: "sku:${sku}") {
-            edges {
-              node {
-                id
-                title
-                sku
-                price
-                inventoryQuantity
-                product {
-                  title
-                }
-              }
-            }
-          }
-        }
-      `;
-
-      const graphqlRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
-        method: 'POST',
+      // Try to match by SKU first
+      const skuRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json?sku=${encodeURIComponent(cardSku)}`, {
         headers: {
           'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query })
+          'Content-Type': 'application/json'
+        }
       });
+      const skuData = await skuRes.json();
+      variant = skuData.variants?.[0];
 
-      const json = await graphqlRes.json();
-      const variantEdge = json?.data?.productVariants?.edges?.[0];
-      return variantEdge?.node || null;
-    };
-
-    let totalValue = 0;
-    const results = [];
-
-    for (const card of cards) {
-      const { cardName, sku = null, quantity = 1 } = card;
-
-      log("🔍 STEP 4: Processing card - " + cardName);
-
-      const productRes = await fetch(
-        \`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(cardName)}\`,
-        {
-          method: 'GET',
+      if (!variant) {
+        // Fallback: search product by title
+        const productRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`, {
           headers: {
             'X-Shopify-Access-Token': ACCESS_TOKEN,
             'Content-Type': 'application/json'
           }
-        }
-      );
-
-      const productText = await productRes.text();
-      let productData;
-
-      try {
-        productData = JSON.parse(productText);
-      } catch (err) {
-        log("❌ STEP 5: Failed to parse product data");
-        return res.status(500).json({ error: 'Failed to parse product data', details: err.message, logs });
+        });
+        const productData = await productRes.json();
+        product = productData.products?.[0];
+        variant = product?.variants?.[0];
+        logs.push(`🔍 Matched by title: ${cardName}`);
+      } else {
+        logs.push(`🔍 Matched by SKU: ${cardSku}`);
       }
 
-      if (!productData || !productData.products || productData.products.length === 0) {
-        const matchedVariant = await fetchVariantBySKU(sku || cardName);
-        if (matchedVariant) {
-          const variantPrice = parseFloat(matchedVariant.price || 0);
-          const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-          totalValue += tradeInValue * quantity;
-          results.push({
-            cardName: matchedVariant.title,
-            match: matchedVariant.title,
-            tradeInValue,
-            quantity
-          });
-          continue;
-        } else {
-          results.push({
-            cardName,
-            match: null,
-            tradeInValue: 0,
-            quantity
-          });
-          continue;
-        }
+      if (!variant) {
+        logs.push(`❌ Could not find variant for ${cardName}`);
+        continue;
       }
 
-      const match = productData.products[0];
-      const variant = match.variants[0];
-      const variantPrice = parseFloat(variant.price || 0);
-      const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
-      totalValue += tradeInValue * quantity;
+      const inventoryItemId = variant.inventory_item_id;
 
-      results.push({
-        cardName,
-        match: match.title,
-        tradeInValue,
-        quantity
+      // Only update inventory if it's a real trade (not estimate)
+      if (!estimate) {
+        const updateRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/set.json`, {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            location_id: locationId,
+            inventory_item_id: inventoryItemId,
+            available: quantity
+          })
+        });
+
+        if (!updateRes.ok) {
+          const errText = await updateRes.text();
+          logs.push(`❌ Inventory update failed: ${errText}`);
+          continue;
+        }
+
+        logs.push(`📦 Inventory set for ${cardName} to ${quantity}`);
+      } else {
+        logs.push(`🧪 Estimate only for ${cardName}, quantity ${quantity}`);
+      }
+
+      processed.push({
+        name: cardName,
+        sku: cardSku,
+        quantity,
+        updated: !estimate
       });
     }
 
-    const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
-
-    let giftCardCode = null;
-    if (payoutMethod === "store-credit" && finalPayout > 0) {
-      try {
-        const giftCardRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json\`, {
-          method: "POST",
-          headers: {
-            "X-Shopify-Access-Token": ACCESS_TOKEN,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            gift_card: {
-              initial_value: finalPayout.toFixed(2),
-              note: \`Buyback payout for \${employeeName || "Unknown"}\`,
-              currency: "CAD"
-            }
-          })
-        });
-        const giftCardData = await giftCardRes.json();
-        giftCardCode = giftCardData?.gift_card?.code || null;
-      } catch (err) {
-        log("❌ STEP 6: Gift card creation failed");
-      }
-    }
-
-    res.status(200).json({
-      giftCardCode,
-      estimate: estimateMode,
-      employeeName,
-      payoutMethod,
-      results,
-      total: totalValue.toFixed(2),
-      overrideTotal: overrideTotal ? finalPayout.toFixed(2) : null,
-      logs
-    });
-
+    return res.status(200).json({ success: true, processed, logs });
   } catch (err) {
     const message = "❌ Fatal API Crash: " + (err.stack || err.message || err.toString());
     console.error(message);
     return res.status(500).send(message);
   }
-};
+}
