@@ -6,63 +6,58 @@ module.exports = async function handler(req, res) {
     }
 
     const estimateMode = req.query?.estimate === 'true';
-    const cards = req.body.cards || req.body.results || [];
+    const { cards, employeeName, payoutMethod, overrideTotal } = req.body;
 
     if (!cards || !Array.isArray(cards)) {
       return res.status(400).json({ error: 'Invalid or missing cards array' });
     }
 
-    const { employeeName, payoutMethod, overrideTotal } = req.body;
-
     const SHOPIFY_DOMAIN = "ke40sv-my.myshopify.com";
     const ACCESS_TOKEN = "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";
-    const LOCATION_ID = 74133467967; // Replace with your actual Shopify location_id
 
-    const fetchVariantBySKU = async (sku) => {
-      const query = `
-        {
-          productVariants(first: 1, query: "sku:${sku}") {
-            edges {
-              node {
-                id
-                title
-                sku
-                price
-                inventoryQuantity
-                inventoryItem {
-                  id
-                }
-                product {
-                  title
-                }
-              }
+    
+const fetchVariantBySKU = async (sku) => {
+  const query = `
+    {
+      productVariants(first: 1, query: "sku:${sku}") {
+        edges {
+          node {
+            id
+            title
+            sku
+            price
+            inventoryQuantity
+            product {
+              title
             }
           }
         }
-      `;
+      }
+    }
+  `;
 
-      const graphqlRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json\`, {
-        method: 'POST',
-        headers: {
-          'X-Shopify-Access-Token': ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query })
-      });
+  const graphqlRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': ACCESS_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query })
+  });
 
-      const json = await graphqlRes.json();
-      const variantEdge = json?.data?.productVariants?.edges?.[0];
-      return variantEdge?.node || null;
-    };
+  const json = await graphqlRes.json();
+  const variantEdge = json?.data?.productVariants?.edges?.[0];
+  return variantEdge?.node || null;
+};
 
-    let totalValue = 0;
+  let totalValue = 0;
     const results = [];
 
     for (const card of cards) {
       const { cardName, sku = null, quantity = 1 } = card;
 
       const productRes = await fetch(
-        \`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=\${encodeURIComponent(cardName)}\`,
+        `https://${SHOPIFY_DOMAIN}/admin/api/2023-10/products.json?title=${encodeURIComponent(cardName)}`,
         {
           method: 'GET',
           headers: {
@@ -81,39 +76,35 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ error: 'Failed to parse product data', details: err.message });
       }
 
+      // If no product by title, try variant SKU match
       if (!productData || !productData.products || productData.products.length === 0) {
+        const variantsRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/variants.json`, {
+          method: 'GET',
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const variantsText = await variantsRes.text();
+        let variantsData;
+        try {
+          variantsData = JSON.parse(variantsText);
+        } catch (parseErr) {
+          return res.status(500).json({ error: 'Failed to parse variants data', details: parseErr.message });
+        }
+
         const matchedVariant = await fetchVariantBySKU(sku || cardName);
         if (matchedVariant) {
           const variantPrice = parseFloat(matchedVariant.price || 0);
           const tradeInValue = parseFloat((variantPrice * 0.3).toFixed(2));
           totalValue += tradeInValue * quantity;
-
           results.push({
             cardName: matchedVariant.title,
             match: matchedVariant.title,
             tradeInValue,
             quantity
           });
-
-          if (!estimateMode && matchedVariant.inventoryItem?.id) {
-            try {
-              await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
-                method: 'POST',
-                headers: {
-                  'X-Shopify-Access-Token': ACCESS_TOKEN,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  location_id: LOCATION_ID,
-                  inventory_item_id: matchedVariant.inventoryItem.id,
-                  available_adjustment: quantity
-                })
-              });
-            } catch (err) {
-              console.error("Inventory adjustment failed:", err.message);
-            }
-          }
-
           continue;
         } else {
           results.push({
@@ -126,6 +117,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // Fallback to first product variant
       const match = productData.products[0];
       const variant = match.variants[0];
       const variantPrice = parseFloat(variant.price || 0);
@@ -138,33 +130,15 @@ module.exports = async function handler(req, res) {
         tradeInValue,
         quantity
       });
-
-      if (!estimateMode && variant.inventory_item_id) {
-        try {
-          await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/inventory_levels/adjust.json\`, {
-            method: 'POST',
-            headers: {
-              'X-Shopify-Access-Token': ACCESS_TOKEN,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              location_id: LOCATION_ID,
-              inventory_item_id: variant.inventory_item_id,
-              available_adjustment: quantity
-            })
-          });
-        } catch (err) {
-          console.error("Inventory adjustment failed:", err.message);
-        }
-      }
     }
 
     const finalPayout = overrideTotal !== undefined ? parseFloat(overrideTotal) : totalValue;
 
+    
     let giftCardCode = null;
     if (payoutMethod === "store-credit" && finalPayout > 0) {
       try {
-        const giftCardRes = await fetch(\`https://\${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json\`, {
+        const giftCardRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2023-10/gift_cards.json`, {
           method: "POST",
           headers: {
             "X-Shopify-Access-Token": ACCESS_TOKEN,
@@ -173,7 +147,7 @@ module.exports = async function handler(req, res) {
           body: JSON.stringify({
             gift_card: {
               initial_value: finalPayout.toFixed(2),
-              note: \`Buyback payout for \${employeeName || "Unknown"}\`,
+              note: `Buyback payout for ${employeeName || "Unknown"}`,
               currency: "CAD"
             }
           })
